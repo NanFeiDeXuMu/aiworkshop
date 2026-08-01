@@ -6,9 +6,10 @@ CLI Q&A Tool - PRD (Product Requirements Document)
 What it does:
   A command-line tool that takes a multi-paragraph text and a question,
   then uses an LLM to answer the question with paragraph-level citations.
+  Continue until user inputs *quit*.
 
 Input:
-  1. Multi-line text from user (terminated by typing 'END' on a new line)
+  1. Multi-line text from user (terminated by typing 'END' on a new line) OR from a txt document
   2. A question about the text
 
 Output:
