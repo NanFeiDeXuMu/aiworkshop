@@ -1,0 +1,16 @@
+{
+  "document_id": "pdf2",
+  "pdf_name": "pdf2.pdf",
+  "num_pages": 202,
+  "chunk_mode": "character_overlap",
+  "chunk_size": 700,
+  "overlap": 120,
+  "model_name": "sentence-transformers/all-MiniLM-L6-v2",
+  "num_chunks": 801,
+  "embedding_dim": 384,
+  "device": "cpu",
+  "chunk_path": "C:\\Users\\nanfe\\aiworkshop\\Day3\\artifacts\\pdf2__chunks__character_overlap__s700__o120.json",
+  "embedding_path": "C:\\Users\\nanfe\\aiworkshop\\Day3\\artifacts\\pdf2__embeddings__character_overlap__s700__o120__sentence-transformers-all-MiniLM-L6-v2.npy",
+  "raw_pages_path": "C:\\Users\\nanfe\\aiworkshop\\Day3\\artifacts\\pdf2__pages.json",
+  "batch_size": 32
+}

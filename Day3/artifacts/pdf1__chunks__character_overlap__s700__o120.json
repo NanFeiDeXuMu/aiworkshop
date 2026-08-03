@@ -1,0 +1,1353 @@
+[
+  {
+    "chunk_id": 0,
+    "page": 1,
+    "text": "Hierarchical Abstract Tree for Cross-Document Retrieval-Augmented Generation Ziwen Zhao 1 Menglin Yang1 Abstract Retrieval-augmented generation (RAG) enhances large language models with external knowledge, and tree-based RAG organizes documents into hi- erarchical indexes to support queries at multiple granularities. However, existing Tree-RAG meth- ods designed for single-document retrieval face critical challenges in scaling to cross-document multi-hop questions: (1) poor distribution adapt- ability, where k-means clustering introduces noise due to rigid distribution assumptions; (2) structural isolation, as tree indexes lack explicit cross-document connections; and (3) coarse ab- stractio",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 1,
+    "page": 1,
+    "text": "mptions; (2) structural isolation, as tree indexes lack explicit cross-document connections; and (3) coarse ab- straction, which obscures fine-grained details. To address these limitations, we propose Ψ-RAG, a tree-RAG framework with two key compo- nents. First, a hierarchical abstract tree index built through an iterative “merging and collapse” process that adapts to data distributions without a priori assumption. Second, a multi-granular re- trieval agent that intelligently interacts with the knowledge base with reorganized queries and an agent-powered hybrid retriever. Ψ-RAG supports diverse tasks from token-level question answer- ing to document-level summarization. On cross- document mu",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 2,
+    "page": 1,
+    "text": "-RAG supports diverse tasks from token-level question answer- ing to document-level summarization. On cross- document multi-hop QA benchmarks, it outper- forms RAPTOR by 25.9% and HippoRAG 2 by 7.4% in average F1 score1. 1. Introduction Retrieval-augmented generation (RAG) (Lewis et al., 2020) enhances large language models (LLMs) with reliable ref- erences from external knowledge bases. To effectively ad- dress multi-granular user queries from token-level factual 1The Hong Kong University of Science and Technology (Guangzhou), Guangzhou, China. Correspondence to: Menglin Yang <menglinyang@hkust-gz.edu.cn>. Proceedings of the 43 rd International Conference on Machine Learning, Seoul, South K",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 3,
+    "page": 1,
+    "text": "ang <menglinyang@hkust-gz.edu.cn>. Proceedings of the 43 rd International Conference on Machine Learning, Seoul, South Korea. PMLR 306, 2026. Copyright 2026 by the author(s). 1Code is available at https://github.com/ Newiz430/Psi-RAG. Single- document retrieval Single document / long context Passage-level online indexing Cross- document retrieval Online Augmented context Single-document query search Multi-document corpus Offline Corpus-level offline indexing Cross-document query search Augmented context Online (a) (b) (c) Single-document Cross-document Indexing time vs. multi-hop F1 Question answering F1 (%) Ψ-RAG 𝚿-RAG HippoRAG 2 Graph-RAG: Indexing time ↑ Multi-hop F1 ↑ Traditional Tree-RA",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 4,
+    "page": 1,
+    "text": "ti-hop F1 Question answering F1 (%) Ψ-RAG 𝚿-RAG HippoRAG 2 Graph-RAG: Indexing time ↑ Multi-hop F1 ↑ Traditional Tree-RAG: Indexing time ↓ Multi-hop F1 ↓ RAPTOR 𝚿-RAG: Indexing time ↓ Multi-hop F1 ↑ GraphRAG Figure 1. (a) Two RAG application scenarios: single-document and cross-document retrieval. (b) Multi-hop QA performance w.r.t. the number of documents in the tree index. (c) Ψ-RAG has both efficient indexing and accurate multi-hop retrieval compared to structured RAG baselines, using 2Wiki as an example. question answering (QA) to document-level summariza- tion, RAG frameworks must leverage the semantic hierarchy within corpora (Sarthi et al., 2024; Chen et al., 2024). Tradi- tional retr",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 5,
+    "page": 1,
+    "text": "meworks must leverage the semantic hierarchy within corpora (Sarthi et al., 2024; Chen et al., 2024). Tradi- tional retrieval systems (Robertson et al., 2009; Karpukhin et al., 2020) slice documents into short, independent chunks; this fixed retrieval granularity leads to incomplete and in- accurate responses for higher-level questions (Nair et al., 2023; Liu et al., 2021; Sarthi et al., 2024; Wang et al.,2025). Structured RAG achieves multi-granularity by organizing documents relationally with knowledge graph indexes (Edge et al., 2024; Jim´enez Guti´errez et al., 2024; 2025) or hierar- chically with tree indexes (Liu et al., 2021; Jin et al., 2025b; Sarthi et al., 2024). Its utility is dem",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 6,
+    "page": 1,
+    "text": "25) or hierar- chically with tree indexes (Liu et al., 2021; Jin et al., 2025b; Sarthi et al., 2024). Its utility is demonstrated in two key sce- narios, as in Figure 1(a): (1) single-document retrieval, to process user requests in diverse granularity within a single user-uploaded document (Jin et al., 2025a; Li et al., 2025b; Zhang et al., 2025a); (2) cross-document retrieval, to pro- cess user requests by building a large index from an entire 1 arXiv:2605.00529v1 [cs.LG] 1 May 2026",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 7,
+    "page": 2,
+    "text": "Hierarchical Abstract Tree for Cross-Document Retrieval-Augmented Generation Table 1.Comparison of RAG frameworks. “ ?” indicates limited support by specific methods. Task type Single- document Cross- document Token- level Passage- level Document- level Traditional RAG✓/times✓?/times Graph-RAG✓ ✓ ✓ ✓? Tree-RAG✓/times?✓ ✓ Ψ-RAG (Ours) ✓ ✓ ✓ ✓ ✓ (domain-specific) corpus and retrieving across multiple doc- uments, challenging the multi-hop retrieval and reasoning capabilities of RAG frameworks (Trivedi et al., 2023; Tang & Yang, 2024). Our work focuses onTree-RAG(Liu et al., 2021; Jin et al., 2025b; Sarthi et al., 2024; Tao et al., 2025; Rezazadeh et al., 2025), which organizes documents into a",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 8,
+    "page": 2,
+    "text": "021; Jin et al., 2025b; Sarthi et al., 2024; Tao et al., 2025; Rezazadeh et al., 2025), which organizes documents into a tree-structured index. It explicitly defines different information granular- ities, enabling superior retrieval performance, especially for summative tasks (Sarthi et al., 2024; Xiao et al., 2025). See Appendix F for more related works. However, existing Tree-RAG methods mainly target single-hop retrieval on a single long document, while cross-document and multi- hop retrieval remain underexplored. For example, repre- sentative k-means-type cluster trees like RAPTOR (Sarthi et al., 2024) achieve high retrieval performance only with small-scale, passage-level indexes. As sh",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 9,
+    "page": 2,
+    "text": "like RAPTOR (Sarthi et al., 2024) achieve high retrieval performance only with small-scale, passage-level indexes. As shown in Figure 1(b), RAPTOR’s retrieval accuracy drops significantly when the search space expands to corpus-level with millions of tokens. We identify three key limitations: (1)Poor dis- tribution adaptability: k-means-type clustering implicitly relies on spherical data distributions (Sarthi et al., 2024), which introduces noisy documents to the retriever for cor- pora with a skewed distribution. (2)Structural isolation: unlike Graph-RAG which dynamically hops between docu- ments based on pairwise relationships, leaf nodes in a tree index lack explicit connections. This pre",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 10,
+    "page": 2,
+    "text": "hops between docu- ments based on pairwise relationships, leaf nodes in a tree index lack explicit connections. This prevents the retriever from capturing implicit causal dependencies in multi-hop questions. (3)Coarse abstraction: the coarse-grained ab- stracts act like a mosaic, obscuring token-level details at the very beginning of retrieval, as dense vector matching struggles to precisely associate a specific entity in the user query with abstract concepts on top of the tree. This work aims to address the limitations of Tree-RAG on cross-document and multi-hop retrieval. We present Ψ-RAG, a versatile and effective Tree-RAG framework, comprising ahierarchical abstract tree indexand amulti-",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 11,
+    "page": 2,
+    "text": " We present Ψ-RAG, a versatile and effective Tree-RAG framework, comprising ahierarchical abstract tree indexand amulti- granular agentic retriever. (1) To address poor distribu- tion adaptability, we build an abstract tree index via a hi- erarchical clustering-inspired “merging and collapse” pro- cess, which iteratively links similar chunks to existing or newly generated upper-level nodes in the tree. (2) To tackle structural isolation, a retrieval and answering agent reasons through the user query, during which it calls for additional document retrieval with a reorganized query when needed. This empowers the tree retriever with better causal under- standing of user query. (3) To resolve th",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 12,
+    "page": 2,
+    "text": " query when needed. This empowers the tree retriever with better causal under- standing of user query. (3) To resolve the conflict between coarse abstraction and detailed factual retrieval, a multi- granular hybrid retrieval framework is employed, where an agent-powered sparse retriever supplements the hierarchical tree retrieval with fine-grained information, yielding signifi- cant performance gains. Our proposed framework possesses numerous advantages: •Ψ -RAG generalizes Tree-RAG from passage-level to corpus-level indexing.As shown in Figure 1(c), Ψ-RAG builds a corpus-level tree 10× faster than OpenIE-based Graph-RAG. Under this setting,Ψ-RAG achieves average gains of 23.7% in retrieval ",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 13,
+    "page": 2,
+    "text": "evel tree 10× faster than OpenIE-based Graph-RAG. Under this setting,Ψ-RAG achieves average gains of 23.7% in retrieval and 25.9% in generation over RAPTOR on token-level QA. •Ψ -RAG extends Tree-RAG to complex multi-hop sce- narios.To our knowledge, Ψ-RAG is the first Tree-RAG for cross-document multi-hop scenarios comparable to Graph-RAG, exhibiting great application potential. As in Figure 1(c), Ψ-RAG is both efficient and powerful, outperforming cutting-edge Graph-RAG frameworks like HippoRAG 2 (Jim´enez Guti´errez et al., 2025). • As in Table 1,Ψ-RAG is an all-in-one Tree-RAG frame- work supporting tasks across various granularities: token-level factual QA, passage-level causal reasonin",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 14,
+    "page": 2,
+    "text": "ree-RAG frame- work supporting tasks across various granularities: token-level factual QA, passage-level causal reasoning, and document-level summarization. •Ψ -RAG is built entirely with open-source LLMs. Its components are flexibly replaceable. Ψ-RAG can be applied to custom corpora without any training or fine- tuning, demonstrating strong generalizability. 2. Preliminary Retrieval-Augmented Generation.Given a user query q, an LLM f(q;I) generates a corresponding response a, where I is the system instruction for a specific task. For a reasoning model, a=R∪y , where R is the Chain-of- Thought (Wei et al., 2022) reasoning text and y is the final answer. An LLM equipped with RAG can be defin",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 15,
+    "page": 2,
+    "text": "the Chain-of- Thought (Wei et al., 2022) reasoning text and y is the final answer. An LLM equipped with RAG can be defined as f·r , where the retriever r(q;I) maps q to top-k relevant document chunks D∗ ={u i}k i=1 ⊂ Dusing a scoring function s(q, u). The external corpus D contains n=|D| chunks in total. The indexI:D → Tmaps each chunk in Dto a discrete index spaceTfor better retrieval. Tree Index.We overload the symbol T to denote a tree. Formally, a tree T= (V,E) is a connected acyclic graph with a finite node set V={v i}|V| i=1 and an edge set E ⊂ V × V. The root node for a node u is denoted as root(u). The set of children of u is c(u) ={v|u→v∈ E} . Let ℓ(u) be the set of all leaf nodes r",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 16,
+    "page": 2,
+    "text": "r a node u is denoted as root(u). The set of children of u is c(u) ={v|u→v∈ E} . Let ℓ(u) be the set of all leaf nodes reachable from u. The depth of a node δ(·) is defined as the length of the path to the root, 2",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 17,
+    "page": 3,
+    "text": "Hierarchical Abstract Tree for Cross-Document Retrieval-Augmented Generation Michael Jackson: The Life of an Icon is a documentary film... Beyoncé 's music is generally R&B ... Beyoncé names Michael Jackson as her musical influence... 1 2 The music of The Lord of the Rings film series was composed... 4 3 a1 Summary: Elements in adapted action films such as The Lord of the Rings and The Avengers... a2 Thanos appears in various Marvel films... 5 Summary: Documents cover various entertainment topics including music, films, and comics... Abstract Tree Indexing Multi-granular Agentic Retrieval R&B, film music, musical career, singer childhood, Beyoncé , Michael Jackson, The Life of an Icon... a1 ",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 18,
+    "page": 3,
+    "text": "entic Retrieval R&B, film music, musical career, singer childhood, Beyoncé , Michael Jackson, The Life of an Icon... a1 Entertainment industry, artistic forms, music stars, film actors, artistic career, Beyoncé , ... similarity ranking summative abstract keyword abstract Action films, film adaptation, film music, release date, Marvel Universe, The Lord of the Rings, Thanos... a2 encoder ( , ) ( , ) ( , ) ( , ) 1 3 4 5 2 3 3 4 abstract tree 1 2 4 53 a1 a2 r r r token-level question answering document-level summarization \"Michael Jackson: The Life of an Icon.\" Film about MJ? multi-granular hybrid index R&A Agent R&A Agent multi-granular hybrid index The film name about that pop star who influe",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 19,
+    "page": 3,
+    "text": "multi-granular hybrid index R&A Agent R&A Agent multi-granular hybrid index The film name about that pop star who influenced Beyoncé ? Summarize the contents of film music. \"The Lord of the Rings is deemed as one of the greatest film music achievements...\" Summary: Introduction of Beyoncé 's stylistic range and her inspiration Michael Jackson... document chunks ① ② merging & collapse encoder Figure 2.Overview of Ψ-RAG. In Abstract Tree Indexing, a hierarchical abstract tree is built by ranking pairwise chunk similarities and applying an iterative “merging and collapse” process. Then, an abstraction agent generates a summative or keyword abstract for each abstract node. In Multi-granular Agen",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 20,
+    "page": 3,
+    "text": "ess. Then, an abstraction agent generates a summative or keyword abstract for each abstract node. In Multi-granular Agentic Retrieval, a retrieval and answering (R&A) agent dynamically interacts with a multi-granular knowledge base organized by both the tree index and a sparse keyword index. By adjusting the retrieval iterations and the utilization of the sparse index,Ψ-RAG adapts to diverse user requests from token-level question answering to document-level summarization. with δ(root) = 0. The tree depth is δ(T) = max u∈T δ(u). We denote the parent (ancestor) of leaf u at a distance k as pk(u), where p0(u) =u and root(u) =p δ(u)(u). The least common ancestor (LCA) of two nodes is defined as",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 21,
+    "page": 3,
+    "text": "a distance k as pk(u), where p0(u) =u and root(u) =p δ(u)(u). The least common ancestor (LCA) of two nodes is defined as the deepest node that is an ancestor to both: LCA(u, v) = arg max a∈{pk(u)}δ(u) k=1 ∩{pk(v)}δ(v) k=1 δ(a)(1) A tree is binary (or bifurcating) if all its non-leaf nodes have exactly two children. A tree is multifurcating if all non-leaf nodes have at least two children and at least one node has more than two children. A tree is equi-depth if every leaf is equidistant from the root. 3.Ψ-RAG As illustrated in Figure 2, Ψ-RAG follows the two-phase paradigm of existing structured RAG: indexing and retrieval. This section formally presents its two core components: Ab- stract Tr",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 22,
+    "page": 3,
+    "text": "f existing structured RAG: indexing and retrieval. This section formally presents its two core components: Ab- stract Tree Indexing and Multi-granular Agentic Retrieval. 3.1. Abstract Tree Indexing Ψ-RAG constructs a tree index from a long document or a document collection, which we term anabstract tree. The leaves consist of the original document chunksDand their encoded dense vectors. Upper-level nodes are calledab- stract nodes, each containing an abstract of its children generated by an abstraction agent. The abstract tree is con- structed via a “similarity ranking → iterative merging and collapse→abstraction” pipeline. Similarity ranking.First, all document chunks are encoded into fixed",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 23,
+    "page": 3,
+    "text": "erative merging and collapse→abstraction” pipeline. Similarity ranking.First, all document chunks are encoded into fixed-length dense vectors e(D)∈R |D|×de using a pre- trained language encoder. A symmetric similarity matrix S∈R |D|×|D| =e(D)e(D) ⊤ is then constructed. These chunk pairs are finally sorted in descending order based on their similarity scores. Iterative merging and collapse.Beginning from the most new abstract node new edge Leaf Node Collapse Abstract Node Collapse Merging 1 2 3 4 1 2 3 4 1 2 3 4 𝛿 2 = 𝛿 4 similar chunk pairs 1 2 4 53 6 1 2 43 6 𝑐 𝑝 4 ← 𝑐 𝑝 4 ∪ 6 5 𝑝 4 3 41 2 5 6 3 41 2 5 6 𝑐 𝑝2 3 ← 𝑐 𝑝2 3 ∪ 𝑟 5𝛿 3 > 𝛿 5 𝑝2 3 𝑝 3 𝑟 5 𝑝 3 𝑝2 3 𝑟 5 𝑝 4 1 2 3 4 similar chunk pair",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 24,
+    "page": 3,
+    "text": " ∪ 6 5 𝑝 4 3 41 2 5 6 3 41 2 5 6 𝑐 𝑝2 3 ← 𝑐 𝑝2 3 ∪ 𝑟 5𝛿 3 > 𝛿 5 𝑝2 3 𝑝 3 𝑟 5 𝑝 3 𝑝2 3 𝑟 5 𝑝 4 1 2 3 4 similar chunk pairs 1 2 3 4 𝛿 2 = 𝛿 4 1 2 3 4 1 2 4 53 6 𝑝 4 𝑝 4 𝑐 𝑝 4 ← 𝑐 𝑝 4 ∪ 6 Leaf Node CollapseMerging 𝛿 3 > 𝛿 5 𝑝2 3 1 2 43 65 3 41 2 5 6 𝑝 3 𝑟 5 3 41 2 5 6 𝑐 𝑝2 3 ← 𝑐 𝑝2 3 ∪ 𝑟 5 𝑝 3 𝑝2 3 𝑟 5 Abstract Node Collapse Figure 3.Illustration of abstract tree building steps: merging, leaf node collapse, and abstract node collapse. Yellow arrows indicate the current chunk pair to be processed. similar pair of document chunks (u, v), the tree is built iteratively: if neither u nor v has a parent, they are linked under a newly created abstract node a: c(a) ={u, v}. This is called amerging. If ",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 25,
+    "page": 3,
+    "text": " u nor v has a parent, they are linked under a newly created abstract node a: c(a) ={u, v}. This is called amerging. If one node u is already linked to an abstract nodep(u), the isolated nodevis also linked under p(u): c(p(u))←c(p(u))∪ {v}. This is called aleaf node collapse. If both u and v are already linked to abstract nodes and their roots differ, then: • If δ(u) =δ(v) , their roots are merged under a new abstract node a: c(a) ={root(u), root(v)} , making root(u) =root(v) =a. • Ifδ(u)> δ(v),root(v)is linked onto the path ofu: c(pδ(v)+1 (u))←c(p δ(v)+1 (u))∪ {root(v)}(2) This results in δ(u) =δ(v) . The case for δ(u)< δ(v) is analogous. This is called anabstract node collapse. Figure 3 il",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 26,
+    "page": 3,
+    "text": " This results in δ(u) =δ(v) . The case for δ(u)< δ(v) is analogous. This is called anabstract node collapse. Figure 3 illustrates these tree-building steps. The iteration runs for exactly n−1 steps, which is the minimum number of connections required to link all n nodes into a single tree. Subsequently, the abstract tree isrebalancedby splitting 3",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 27,
+    "page": 4,
+    "text": "Hierarchical Abstract Tree for Cross-Document Retrieval-Augmented Generation nodes with an excessive number of children and distributing the children evenly between two new nodes. This avoids overly long contexts for the abstraction agent. A detailed algorithm is provided in Appendix A. Abstraction.This step employs an abstraction agent to generate and encode an abstract for each abstract node. We consider two abstraction types. (1)Summative abstract: paragraphs of summary text (Sarthi et al., 2024; Edge et al., 2024) that capture coherent logic and key entity relation- ships. (2)Keyword abstract: keywords of different types distilled from the document chunks, with high information density b",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 28,
+    "page": 4,
+    "text": "ps. (2)Keyword abstract: keywords of different types distilled from the document chunks, with high information density but weak logical correlations. Phrases are encour- aged over single words to preserve the entity co-occurrence. 3.2. Multi-granular Agentic Retrieval Existing Tree-RAG frameworks struggle with multi-hop questions due to the structural isolation of tree indexes. For a multi-hop query like “Who is the wife of the man(David Gest)who produced the documentary of the pop star who influenced Beyonc´e?”, a retriever relying solely on dense vector similarity would prioritize content related to “Bey- onc´e” and “documentary”, while missing the true subject “David Gest”. As such implic",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 29,
+    "page": 4,
+    "text": "rioritize content related to “Bey- onc´e” and “documentary”, while missing the true subject “David Gest”. As such implicit associations often follow a causal order, existing tree retrieval methods like beam search (Sarthi et al., 2024; Gupta et al., 2025) are insufficient for ordered causality reasoning. Retrieval and Answering (R&A) Agent.To capture ordered causality during reasoning, we employ a versatile R&A agent that intelligently engages in multi-turn interac- tions with the abstract tree index. It first assesses whether the available information is sufficient to answer the user query accurately or whether an additional retriever call is neces- sary. The agent response is a triple a= (",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 30,
+    "page": 4,
+    "text": "er the user query accurately or whether an additional retriever call is neces- sary. The agent response is a triple a= (R,<action>,·) where the action tag is either <answer> or <retrieve>. If <retrieve> is returned, the agent proposes a new query q′ and requests another retrieval. The newly retrieved documents are then fed back to the agent alongside the original user query for the next reasoning step. For each retrieval step, Ψ-RAG performs top-down dense vector matching following (Sarthi et al., 2024). Starting from the root, it computes the cosine similarity s(q, u)be- tween the query vector and each candidate node at layer l, selecting the top-k nodes Ul. Then, all children of the se- le",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 31,
+    "page": 4,
+    "text": "ween the query vector and each candidate node at layer l, selecting the top-k nodes Ul. Then, all children of the se- lected nodes S u∈Ul c(u) become the candidates for the next layer. This process iterates until the leaf layer is reached. Our agentic retrieval workflow is as follows. Given a user query q, an initial retrieval is invoked. The returned top-k chunks D∗ 0 are fed to the agent, yielding a1 =f(q 0;I(D ∗ 0)). Then, “retrieval-generation” steps are iterated: D∗ i =r(q ′ i,T), ai+1 =f",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 32,
+    "page": 4,
+    "text": "q; i[ j=1 (I(D ∗ j )∪a j)∪I(D ∗ 0) \u0001 (3) until the action tag becomes <answer> or the number of retrieval steps reaches a threshold imax. The user instruc- tion I continuously reminds the agent of the remaining retrieval attempts. If the information remains insufficient after exhausting all attempts, the R&A agent returns “Not mentioned”. Agent-powered Hybrid Retrieval.In a corpus-level search space, the coarse-grained upper-level abstracts make even simple factual searches challenging for Tree-RAG. To better capture fine-grained information, a sparse keyword index is constructed during tree indexing using BM25 (Robertson et al., 2009). During retrieval, the R&A agent combines results from b",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 33,
+    "page": 4,
+    "text": "ructed during tree indexing using BM25 (Robertson et al., 2009). During retrieval, the R&A agent combines results from both the tree and sparse indexes via two optional strategies: (1) parametrically, using a reranker model to integrate both top-k chunks; or (2) non-parametrically, via reciprocal rank fusion (RRF) (Cormack et al., 2009). Furthermore, the R&A agent broadens the scope of sparse retrieval. It is encouraged to reorganize its query with en- riched context, such as inserting descriptive appositions: q: “Who is the wife of David Gest?” reorganization − − − − − − − →q′:“Who is the wife ofthe American film producerDavid Gest?” This adds thematic keywords for the sparse retriever and,",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 34,
+    "page": 4,
+    "text": " →q′:“Who is the wife ofthe American film producerDavid Gest?” This adds thematic keywords for the sparse retriever and, more importantly, aids the tree retriever in locating relevant upper-level abstract nodes with the high-level context. An algorithm of the agentic retrieval is given in Appendix A. 4. Distribution Adaptability of Tree-RAG This section analyzes the distribution adaptability of k- means-type Tree-RAG and Ψ-RAG. Tree-RAG methods like RAPTOR (Sarthi et al., 2024) build an equi-depth tree index via bottom-up k-means-type clustering, such as the Gaussian Mixture Model (GMM). However, k-means-type clustering tends to assign objects from major clusters to minor ones, resulting in ",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 35,
+    "page": 4,
+    "text": "e Model (GMM). However, k-means-type clustering tends to assign objects from major clusters to minor ones, resulting in clusters of relatively uniform size even when the corpus follows a skewed distribution. This is known as the “uniform effect” (Xiong et al., 2006; Liang et al., 2012; Assran et al., 2023). For RAG, this effect may cause the retriever to overlook chunks with minor themes. In contrast, Ψ-RAG better preserves skewed distributions in corpora. We compare the two tree RAG frameworks through the lens of their optimization objectives. 4.1. The Uniform Effect k-means-type tree index.A cluster can be defined as a family of leaf sets C={c=ℓ(T c)} from an equi-depth forest {Tc ⊆ T |δ(T",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 36,
+    "page": 4,
+    "text": "ns-type tree index.A cluster can be defined as a family of leaf sets C={c=ℓ(T c)} from an equi-depth forest {Tc ⊆ T |δ(Tc) =δ(T)−1} . A k-means-type cluster tree searches for an optimalCby minimizing the objective L= kX i=1 X xi∈ci ∥xi −µ i∥2,(4) 4",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 37,
+    "page": 5,
+    "text": "Hierarchical Abstract Tree for Cross-Document Retrieval-Augmented Generation where k=|C| , µi = P xi∈ci xi ni is the cluster centroid and ni =|c i|. Theorem 4.1 presents a variant of (4) that reveals the “uniform effect” ink-means clustering. Theorem 4.1(Uniform effect of k-means (Liang et al., 2012)).GivenLin(4), we have L=−A X 1≤i<j≤k ninj∥µi −µ j∥2 +B(5) whereAandBare constants dependent only on the data. See Section B.1 for the proof. Assuming ninj and ∥µi −µ j∥2 are independent, maximizing the term ninj in (5) leads to n1 =n 2 =· · ·=nk =n/k . This indicates that k-means favors clusters of uniform size. (Proposition 1, (Assran et al., 2023)) further notes that soft k-means,i.e., GMM, sh",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 38,
+    "page": 5,
+    "text": "ns favors clusters of uniform size. (Proposition 1, (Assran et al., 2023)) further notes that soft k-means,i.e., GMM, shares the same global optimum and the uniform effect with k-means. Figure 4 shows a toy example where k-means gradually shifts the minor cluster centroid toward the major class, inflating the minor cluster beyond its actual size. This may confuse abstract nodes in a tree index which leads to semantic bias or neglect of minor nodes. Minor clusterMajor cluster Minor centroidMajor centroid uniform shift Figure 4.The uniform effect of k-means clustering. Initial cen- troids are set at the center of each class (step 0). As iteration proceeds, more major class nodes are misassigne",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 39,
+    "page": 5,
+    "text": "l cen- troids are set at the center of each class (step 0). As iteration proceeds, more major class nodes are misassigned to the minor cluster, eventually shifting the minor centroid (step 12). Ψ-RAG’s hierarchical index. Ψ-RAG is inspired by ag- glomerative hierarchical clustering (AHC) (Florek et al., 1951; Sokal & Michener, 1958), a greedy heuristic algo- rithm without an explicit optimization objective. We there- fore adopt a widely used metric for evaluating AHC. Definition 4.2(Dasgupta’s cost (Dasgupta, 2016)).For a treeT, the Dasgupta’s cost is defined as c(T) = X 1≤i<j≤n d(ui, uj)|ℓ(LCA(ui, uj))|(6) whered(·,·)is a distance function. The intuition is that semantically similar points ",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 40,
+    "page": 5,
+    "text": "i<j≤n d(ui, uj)|ℓ(LCA(ui, uj))|(6) whered(·,·)is a distance function. The intuition is that semantically similar points (with small d) should have a deeper LCA,i.e.,be placed closer in the tree. Dasgupta’s cost is widely regarded as the implicit minimization objective of AHC (Moseley & Wang, 2017; Charikar & Chatziafratis, 2017; Chami et al., 2020). Based on Dasgupta’s cost, we analyze two scenarios: (1) whether Ψ-RAG tends to build a tree with uniform leaf dis- tribution, and (2) whether it adaptively generates subtrees of varying sizes for minor clusters. Our findings are formalized in the following Theorems. Theorem 4.3(Non-uniformity preference of Ψ-RAG).Con- sider a 3-layer equi-depth m",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 41,
+    "page": 5,
+    "text": " formalized in the following Theorems. Theorem 4.3(Non-uniformity preference of Ψ-RAG).Con- sider a 3-layer equi-depth multifurcating tree T with a perfectly uniform leaf distribution among its subtrees T1,· · ·,Tk: n1 =n 2 =· · ·=nk =n/k , where k≥3 , n≥3k . A new tree T ′ is constructed by moving one leaf fromT j to another subtreeT i. Then: (1)c(T ′)< c(T); (2) Let T=ψ(T AHC) and T ′ =ψ(T ′ AHC), where ψ(·) de- notes the collapsing process from a binary tree to an equi- depth multifurcating tree. Denote by ∆c and ∆c′ the incre- ments of Dasgupta’s cost on T and T ′ introduced by ψ(·), respectively. Then we havec(T ′)−c(T) = ∆c ′ −∆c. Theorem 4.4(Distribution adaptability of Ψ-RAG).Con- si",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 42,
+    "page": 5,
+    "text": "duced by ψ(·), respectively. Then we havec(T ′)−c(T) = ∆c ′ −∆c. Theorem 4.4(Distribution adaptability of Ψ-RAG).Con- sider a 3-layer equi-depth multifurcating tree T with sub- trees T1,· · ·,Tk of any size where k≥3 . A subtree of a minor leaf cluster Ti has 2≤n i < nj,∀1≤j̸=i≤k . A new tree T ′ is constructed by moving one leaf from some subtreeT j to the minor subtreeT i. Then: (1)c(T ′)≥c(T), andc(T ′) =c(T)iffn j =n i + 1; (2) Let T=ψ(T AHC), T ′ =ψ(T ′ AHC) and ∆c,∆c ′ defined as in Theorem 4.3. Then we have∆c′ ≥∆c , and ∆c′ = ∆c iffn j =n i + 1. See Section B.2 and Section B.3 for the proofs and remarks. The above theorems prove that Ψ-RAG incurs a larger incre- ment in Dasgupta’s cos",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 43,
+    "page": 5,
+    "text": "ection B.3 for the proofs and remarks. The above theorems prove that Ψ-RAG incurs a larger incre- ment in Dasgupta’s cost for (1) a tree with perfectly uniform leaf distribution, and (2) a tree where nodes from major clus- ters are assigned to a minor cluster. They show that Ψ-RAG does not suffer from the uniform effect and, furthermore, adaptively preserves skewed distributions within corpora. 4.2. Visualization Study on Skewed Data We conduct a visualization study by constructing tree in- dexes with both RAPTOR andΨ-RAG on skewed datasets to validate the above conclusions. Three skewed datasets are generated from MultiHop-RAG (Tang & Yang, 2024): each combines the first 5 documents from on",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 44,
+    "page": 5,
+    "text": ". Three skewed datasets are generated from MultiHop-RAG (Tang & Yang, 2024): each combines the first 5 documents from one of three categories: “Business”, “Entertainment”, or “Technology”, with the first 50 documents from the semantically distant “Sports” class, as shown in Figure 5(a). We extract the bottom four layers of each tree and visualize them as circular trees. The results in Figure 5(b) reveal that major abstract nodes in RAPTOR tend to be confused with (i.e., share a parent with) minor ones especially at higher layers, which is a man- ifestation of the uniform effect. In contrast, Ψ-RAG assigns 5",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 45,
+    "page": 6,
+    "text": "Hierarchical Abstract Tree for Cross-Document Retrieval-Augmented Generation RAPTOR (a) Embedding space (MultiHop-RAG) Sports (S) Business (B) Entertainment (E) Technology (T) 𝚿-RAG Major leaf nodes (S) Minor leaf nodes (B) Major leaf nodes (S) Minor leaf nodes (E) Major leaf nodes (S) Minor leaf nodes (T) S[:50] + B[:5] S[:50] + E[:5] S[:50] + T[:5] Major abstract nodes confused with minor abstract nodes (b) Figure 5.RAPTOR vs. Ψ-RAG on skewed distributions. (a) 2-dimensional embedding space of the four main categories of MultiHop- RAG. (b) Circular tree visualizations (only regions containing minor class nodes are shown). The outermost ring represents leaf nodes. For S[:50]+B[:5], red poin",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 46,
+    "page": 6,
+    "text": "ly regions containing minor class nodes are shown). The outermost ring represents leaf nodes. For S[:50]+B[:5], red points represent “Sports” nodes, while blue points and edges trace root-to-leaf paths for “Business” nodes. The red shaded area indicates the retrieval noise introduced by confused nodes (/times). Comparing the number of confused nodes and the size of the shaded areas,Ψ-RAG organizes minor classes more effectively. far fewer major abstract nodes to minor ones, resulting in an intuitively superior index structure. A detailed case study of the confused abstracts and its negative effect on retrieval is provided in Appendix D.2. 5. Experiments 5.1. Experimental Setup Tasks and eval",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 47,
+    "page": 6,
+    "text": " and its negative effect on retrieval is provided in Appendix D.2. 5. Experiments 5.1. Experimental Setup Tasks and evaluation metrics.Our evaluation encom- passes four types of tasks. (1) Single-hop and multi-hop QA (token-level fact answering) involves detailed facts within one or multiple passages under across-document setting. A word or a phrase is required as an answer. We use Recall@k (k= 2,5 ) for retrieval metrics and use Exact Match (EM) and F1 score for QA. (2) Narrative QA (passage-level causal reasoning) requires the model to identify causal relation- ships within asingle long documentfor a narrative answer. Given the variable answer length, we employ F1 and the Recall-Oriented U",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 48,
+    "page": 6,
+    "text": "in asingle long documentfor a narrative answer. Given the variable answer length, we employ F1 and the Recall-Oriented Understudy for Gisting Evaluation using the Longest Common Subsequence (ROUGE-L) as metrics. (3) Document-level summarization requires a comprehen- sive understanding of asingle long documentin response to a fixed query: “Summarize the contents of this meeting / news event”. Iterative retrieval and the sparse index are disabled for this task. Given the variable answer length and format, we use ROUGE-L as the metric. Datasets.Each task is evaluated on multiple benchmark datasets. For single-hop and multi-hop QA, we mainly fol- low HippoRAG 2 (Jim´enez Guti´errez et al., 2025)",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 49,
+    "page": 6,
+    "text": "le benchmark datasets. For single-hop and multi-hop QA, we mainly fol- low HippoRAG 2 (Jim´enez Guti´errez et al., 2025) and use 1,000 randomly sampled queries from (1) single-hop: NQ (Kwiatkowski et al., 2019) and PopQA (Mallen et al., 2023); (2) multi-hop: HotpotQA (Yang et al., 2018), 2Wiki (2Wiki- MultihopQA) (Ho et al., 2020), and MuSiQue (Trivedi et al., 2022). We also include the first 1,000 questions from MultiHop-RAG (Tang & Yang, 2024), a multi-hop bench- mark containing negative samples. For narrative QA, 10 long documents are randomly sampled from NarrativeQA (Koˇcisk`y et al., 2018). We also use the first 100 documents from the LongBook subset in∞Bench (Zhang et al., 2024a), a n",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 50,
+    "page": 6,
+    "text": "oˇcisk`y et al., 2018). We also use the first 100 documents from the LongBook subset in∞Bench (Zhang et al., 2024a), a narrative QA dataset featuring significantly longer docu- ments. For summarization, we adopt QMSum (Zhong et al., 2021) and WCEP (Ghalandari et al., 2020). Overly short documents are filtered out following (Zhang et al., 2025a). Further dataset details are provided in Appendix C. Baselines.Our baselines cover various RAG paradigms. (1) Traditional RAG: the sparse retriever BM25 (Robertson et al., 2009), the dense vector retriever DPR (Karpukhin et al., 2020) with Faiss (Douze et al., 2025), and the strong hybrid retriever BM25 + DPR equipped with a reranker. An- other baseli",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 51,
+    "page": 6,
+    "text": ") with Faiss (Douze et al., 2025), and the strong hybrid retriever BM25 + DPR equipped with a reranker. An- other baseline involves DPR equipped with an iterative agen- tic retriever IRCoT (Trivedi et al., 2023). (2) Graph-RAG: GraphRAG from Microsoft (Edge et al., 2024), the state-of- the-art framework HippoRAG 22 (Jim´enez Guti´errez et al., 2025), and GoR (Zhang et al., 2025a), a new summarization- exclusive Graph-RAG framework. (3) Tree-RAG: RAPTOR (Sarthi et al., 2024), the only open-source framework that can be technically implemented to a corpus-level index. Implementation details. Ψ-RAG (and all dense retrieval baselines) by default uses Qwen3-Embedding-8B (Q3-8B) (Zhang et al., 2025",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 52,
+    "page": 6,
+    "text": "tation details. Ψ-RAG (and all dense retrieval baselines) by default uses Qwen3-Embedding-8B (Q3-8B) (Zhang et al., 2025b) as the encoder and Llama-3.3-70B (L3- 70B) (Dubey et al., 2024) as the abstraction and R&A agent. We use BM25S (L `u, 2024) as the BM25 implementation. 2We report both the original setting (with NV-Embed-V2 (Lee et al., 2025)) and our setting with Q3-8B and Q3R. 6",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 53,
+    "page": 7,
+    "text": "Hierarchical Abstract Tree for Cross-Document Retrieval-Augmented Generation Table 2.Single- and multi-hop QA results in EM (%) and F1 (%). Best results are inbold. Second-bests are underlined . Type Method NQ PopQA HotpotQA 2Wiki MuSiQue MultiHop-RAGAverage EM F1 EM F1 EM F1 EM F1 EM F1 EM F1 EM F1 Traditional RAG BM2545.4 56.76 40.9 49.01 43.8 54.07 34.7 36.90 13.0 17.96 2.5 3.93 23.55 36.44 DPR46.0 59.09 47.2 55.89 52.0 63.10 39.9 43.13 18.7 24.03 41.3 42.72 40.85 47.99 BM25 + DPR + Q3R48.2 60.58 47.256.01 58.4 70.98 41.6 45.43 28.3 34.81 52.9 53.49 46.10 53.55 DPR + IRCoT + Q3R50.162.7147.3 56.9859.1 71.00 48.9 53.44 29.7 37.36 41.7 42.28 46.13 53.96 GraphRAG36.0 50.85 32.7 42.13 54.9 66",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 54,
+    "page": 7,
+    "text": "oT + Q3R50.162.7147.3 56.9859.1 71.00 48.9 53.44 29.7 37.36 41.7 42.28 46.13 53.96 GraphRAG36.0 50.85 32.7 42.13 54.9 66.30 52.2 56.62 25.8 30.70 37.3 39.08 39.82 47.61 Graph-RAG HippoRAG 247.4 62.42 43.4 55.90 61.975.4064.8 71.35 37.5 48.00 17.7 19.36 45.45 55.41 HippoRAG 2 + Q3R45.7 60.99 43.3 56.05 58.7 71.52 60.1 66.00 32.9 43.27 17.6 19.37 43.05 52.87 RAPTOR + Q3R43.5 55.40 19.8 25.76 43.1 52.54 19.1 22.16 16.6 21.10 42.5 43.20 30.77 36.69 Tree-RAGΨ-RAG/file-alt50.0 63.45 46.7 56.74 62.1 74.59 69.1 76.73 38.7 48.90 55.3 56.23 53.65 62.77 Ψ-RAGὑ1 50.6 63.58 46.1 55.88 62.2 74.85 69.0 76.94 37.9 47.83 54.1 55.18 53.32 62.38 Table 3.Retrieval results for single- and multi-hop QA in Recall@",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 55,
+    "page": 7,
+    "text": "2.2 74.85 69.0 76.94 37.9 47.83 54.1 55.18 53.32 62.38 Table 3.Retrieval results for single- and multi-hop QA in Recall@2 (R@2%) and Recall@5 (R@5%). Best results are inbold. Second-bests are underlined. Type Method NQ PopQA HotpotQA 2Wiki MuSiQueAverage R@2 R@5 R@2 R@5 R@2 R@5 R@2 R@5 R@2 R@5 R@2 R@5 Traditional RAG BM2528.20 56.03 23.90 35.70 57.25 74.80 54.70 64.98 28.78 35.40 38.57 53.38 DPR27.13 69.51 20.85 49.70 35.25 86.75 32.30 71.03 33.11 48.08 29.73 65.01 BM25 + DPR + Q3R46.2976.63 42.90 50.55 85.70 93.80 68.95 74.52 50.92 67.35 58.95 72.57 DPR + IRCoT + Q3R46.1676.10 42.75 50.45 84.50 92.40 69.20 74.08 50.90 66.02 58.70 71.81 Graph-RAGHippoRAG 245.3277.1144.30 50.75 84.05 94.40 75",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 56,
+    "page": 7,
+    "text": "6.10 42.75 50.45 84.50 92.40 69.20 74.08 50.90 66.02 58.70 71.81 Graph-RAGHippoRAG 245.3277.1144.30 50.75 84.05 94.40 75.40 89.92 55.67 73.77 60.95 77.19 HippoRAG 2 + Q3R42.09 73.6846.6050.45 74.70 90.65 70.00 80.73 49.02 64.64 56.48 72.03 RAPTOR + Q3R41.56 68.48 21.20 23.80 67.10 72.25 40.93 44.57 33.29 42.26 40.82 50.27 Tree-RAG Ψ-RAG/file-alt46.08 75.72 43.35 51.30 88.15 96.00 81.35 96.13 57.21 75.77 63.23 78.98 Ψ-RAGὑ1 45.88 75.13 42.60 50.55 88.10 95.80 81.23 95.85 55.69 75.08 62.70 78.48 Ψ-RAG is equipped with Qwen3-Reranker-8B (Q3R) to fuse retrieval results from sparse and dense retrievers. For a fair comparison, most baselines are also equipped with Q3R. Detailed configurations and ",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 57,
+    "page": 7,
+    "text": "rse and dense retrievers. For a fair comparison, most baselines are also equipped with Q3R. Detailed configurations and instruction prompts are provided in Appendix C. 5.2. Single- and Multi-Hop QA We use the symbols “/file-alt” and “ὑ1” to denote Ψ-RAG with summative and keyword abstract, respectively. Retrieval and QA results on single-hop and multi-hop datasets are pre- sented in Table 2 and 3, yielding several key observations. (1)Traditional baselines excel at single-hop QA.For fac- tual questions with little context such as NQ and PopQA, DPR and its hybrid combination with BM25 achieve recall and accuracy competitive with HippoRAG 2 and Ψ-RAG. In such cases, answers often lie in docume",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 58,
+    "page": 7,
+    "text": " with BM25 achieve recall and accuracy competitive with HippoRAG 2 and Ψ-RAG. In such cases, answers often lie in documents with frequent query-related entities or strong semantic correlation. (2)Multi-hop QA is the domain of iterative agentic RAG and structured RAG.Both IRCoT and HippoRAG 2 out- perform the hybrid retriever BM25 + DPR on 3 out of 4 multi-hop datasets, with the highest F1 gains exceeding 20%. This underscores the necessity of modeling implicit entity relationships for multi-hop reasoning. (3)RAPTOR’s effectiveness diminishes at corpus scale. On 5 out of 6 datasets, RAPTOR + Q3R underperforms DPR without a reranker, showing degradations exceeding 25% in Recall@5 and 30% in F1",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 59,
+    "page": 7,
+    "text": "atasets, RAPTOR + Q3R underperforms DPR without a reranker, showing degradations exceeding 25% in Recall@5 and 30% in F1 on PopQA. This highlights a key limitation of traditional Tree-RAG: as the index space expands, performance on factual QA is severely hampered by coarse-grained abstracts. (4) Ψ-RAG achieves strong performance across both task types.Compared to RAPTOR, Ψ-RAG achieves average gains of 25.9% in F1 and 23.7% in Recall@5, irrespective of the abstraction type. Notably, Ψ-RAG surpasses RAP- TOR by up to 54.78% in F1 on 2Wiki. To our knowledge, Ψ-RAG is the first Tree-RAG to surpass advanced Graph- RAG, outperforming HippoRAG 2 by 7.4% and HippoRAG 2 + Q3R by 9.9% in average F1. ",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 60,
+    "page": 7,
+    "text": "t Tree-RAG to surpass advanced Graph- RAG, outperforming HippoRAG 2 by 7.4% and HippoRAG 2 + Q3R by 9.9% in average F1. We also find that the sum- mative abstract slightly outperforms the keyword abstract. This indicates that logical relationships between entities can effectively compensate for abstract coarseness. 5.3. Narrative QA and Summarization Table 4 shows the performance of narrative QA and summa- rization. We derive the following observations: (1)Traditional baselines struggle to capture causal rela- tionships and high-level semantics.Unlike in token-level QA, BM25 and DPR achieve the lowest performance in most cases. This indicates that simple keyword matching 7",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 61,
+    "page": 8,
+    "text": "Hierarchical Abstract Tree for Cross-Document Retrieval-Augmented Generation Table 4.Narrative QA results in F1 (%) and ROUGE-L (R-L%), and summarization results in ROUGE-L (R-L%). Best results are inbold. Second-bests are underlined . Method NarrativeQA∞-LongBook QMSum WCEP F1 R-L F1 R-L R-L R-L BM2513.95 14.07 14.87 15.54 15.63 16.08 DPR17.78 17.87 21.51 23.60 13.43 8.14 BM25 + DPR + Q3R20.30 20.37 24.46 24.87 13.42 8.14 GoR + Q3R – – – –15.98 13.98 RAPTOR + Q3R21.36 21.61 13.90 15.85 16.53 18.33 Ψ-RAG/file-alt27.8428.43 25.52 27.11 16.87 20.28 Ψ-RAGὑ1 27.66 28.35 28.4428.36 16.65 18.81 and vector similarity are insufficient for passage-level and document-level user demands. On the contrar",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 62,
+    "page": 8,
+    "text": ".36 16.65 18.81 and vector similarity are insufficient for passage-level and document-level user demands. On the contrary, structured indexes of RAPTOR and GoR empower the agent with high- level information and thus higher performance on passage- and document-level tasks. (2) Ψ-RAG excels in both narrative and summarization tasks.It consistently outperforms all baseline methods across both settings, surpassing RAPTOR by an average of 9.7% in F1 on NarrativeQA and ∞-LongBook. It also surpasses GoR by 3.2% in average ROUGE-L. NQ PopQA HotpotQA2Wiki MuSiQue NQ PopQA HotpotQA2Wiki MuSiQue 20 25 25 Ψ-RAG w/o R&A w/o Q3R w/o SR Ψ-RAG w/o R&Aw/o Q3R w/o SR 76.94 47.83 74.85 55.88 63.58 60.07 61.69 ",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 63,
+    "page": 8,
+    "text": "iki MuSiQue 20 25 25 Ψ-RAG w/o R&A w/o Q3R w/o SR Ψ-RAG w/o R&Aw/o Q3R w/o SR 76.94 47.83 74.85 55.88 63.58 60.07 61.69 42.21 69.35 69.24 27.83 44.93 55.71 67.04 52.54 35.73 27.56 53.64 45.78 34.06 Figure 6.Ablation studies in F1 (%). 5.4. Ablation Studies Figure 6 presents the QA performance of Ψ-RAG with different components ablated: the R&A agent, sparse re- trieval (SR), and reranker (Q3R). We use RRF instead of the reranker in the “w/o Q3R” setting. We have some key observations: (1) Ψ-RAG achieves peak performance when all com- ponents are combined together.Our R&A agent consis- tently improves performance on multi-hop QA tasks with an average gain of ∼20%. The contribution of sparse r",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 64,
+    "page": 8,
+    "text": "ent consis- tently improves performance on multi-hop QA tasks with an average gain of ∼20%. The contribution of sparse re- trieval is also significant, especially on datasets like PopQA (+21.82%) and 2Wiki (+41.21%) with large amounts of short factual questions related to specific names. This vali- dates its effectiveness in mitigating the coarse abstraction of the tree index. Furthermore, despite additional computa- tional and storage costs, a large reranker integrates retrievers Table 5.Query reorganization (QR) ablation in F1 (%). Best results are inbold. HotpotQA 2Wiki MuSiQue MultiHop-RAG Ψ-RAG 74.85 76.94 47.83 55.18 w/o QR74.17(↓0.68)76.71(↓0.23)45.82(↓2.01)55.03(↓0.15) more effective",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 65,
+    "page": 8,
+    "text": "MuSiQue MultiHop-RAG Ψ-RAG 74.85 76.94 47.83 55.18 w/o QR74.17(↓0.68)76.71(↓0.23)45.82(↓2.01)55.03(↓0.15) more effectively than the non-parametric RRF, but it does not provide a core performance contribution inΨ-RAG. (2)R&A agent is also beneficial for single-hop QA.For example, it brings a 1.89% F1 gain on NQ. This benefit stems from its query reorganization mechanism, which im- proves retrieval for queries with insufficient context. Query reorganization.Table 5 evaluates a counterpart of Ψ-RAG without query reorganization, that is, the R&A agent is no longer encouraged to reorganize and enrich their generated queries at each retrieval attempt. This leads to performance degradation across m",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 66,
+    "page": 8,
+    "text": " reorganize and enrich their generated queries at each retrieval attempt. This leads to performance degradation across multi-hop datasets, with a 2% F1 drop on MuSiQue. Therefore, the thematic keywords and high-level context introduced by query reorganization contribute to accurate hybrid retrieval ofΨ-RAG. Table 6.Experiment results of Ψ-RAG with different open-source backbones. Replaced components are shaded. Embedding Abstraction R&A RerankerHotpotQA 2Wiki MuSiQue R@5 F1 R@5 F1 R@5 F1 Q3-8B L3-70B L3-70B Q3R95.80 74.85 95.85 76.94 75.08 47.83Q3-0.6B L3-70B L3-70B Q3R94.40 74.48 95.55 75.94 73.42 46.57Q3-8B L3-1B L3-70B Q3R94.45 73.23 95.77 76.78 73.14 47.00Q3-8B L3-8B L3-70B Q3R93.65 73.7",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 67,
+    "page": 8,
+    "text": "0 74.48 95.55 75.94 73.42 46.57Q3-8B L3-1B L3-70B Q3R94.45 73.23 95.77 76.78 73.14 47.00Q3-8B L3-8B L3-70B Q3R93.65 73.72 95.83 76.30 74.29 47.46Q3-8B L3-70B G3-27B Q3R95.00 73.65 94.05 71.78 71.80 49.30Q3-8B L3-70B L3-70BBGE95.10 74.32 95.80 76.85 72.46 48.40 Table 7.Experiment results of Ψ-RAG with different closed-source R&A backbones. R&A HotpotQA MuSiQue R@5 F1 R@5 F1 GPT-5-mini94.40 78.10 72.67 49.48 Gemini-2.5-Flash96.00 77.18 77.06 51.86 5.5. Backbone Flexibility Ψ-RAG can flexibly accommodate different backbone lan- guage models for its embedding model, abstraction agent, R&A agent, and reranker. We select various open-source models, including (1) Qwen3-Embedding-0.6B (Q3-0.6B) (Zha",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 68,
+    "page": 8,
+    "text": " agent, R&A agent, and reranker. We select various open-source models, including (1) Qwen3-Embedding-0.6B (Q3-0.6B) (Zhang et al., 2025b) as the embedding model; (2) Llama- 3.2-1B (L3-1B) and Llama-3.1-8B (L3-8B) (Dubey et al., 2024) as the abstraction agent; (3) Gemma-3-27B (G3-27B) (Kamath et al., 2025) as the R&A agent; and (4) BGE- Reranker-Large (BGE) (Li et al., 2023) as the reranker. The results are shown in Table 6. We observe that these models, especially L3-1B/8B and BGE, serve as effective lightweight alternatives, as they achieve comparable or even superior performance with lower costs. 8",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 69,
+    "page": 9,
+    "text": "Hierarchical Abstract Tree for Cross-Document Retrieval-Augmented Generation Table 8.Time costs of different structured RAG. All experiments follow the settings in Appendix C. The embedding time of Q3-8B for HotpotQA and MuSiQue is 277.3s and 309.0s, respectively. L3-70B is used by default for abstraction of both RAPTOR and Ψ-RAG. “↑” and “↓” indicate a distinguishable higher and lower efficiency compared to RAPTOR + Q3R, respectively. Method Indexing time Average single retrieval time Average QA time HotpotQA MuSiQue HotpotQA MuSiQue HotpotQA MuSiQue HippoRAG 2OpenIE:105,360sGraph indexing:32,187sTotal:137,547s↓↓ OpenIE:128,192sGraph indexing:20,668sTotal:148,860s↓↓Graph retrieval:10.44s↓↓G",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 70,
+    "page": 9,
+    "text": "60sGraph indexing:32,187sTotal:137,547s↓↓ OpenIE:128,192sGraph indexing:20,668sTotal:148,860s↓↓Graph retrieval:10.44s↓↓Graph retrieval:8.94s↓↓19.24s↓17.56s↓ RAPTOR + Q3RTree indexing:1,123sAbstraction:5,509sTotal:6,632s Tree indexing:1,684sAbstraction:7,570sTotal:9,254s Tree retrieval:0.22sReranking:0.98sTotal:1.20s Tree retrieval:0.22sReranking:2.17sTotal:2.39s Single retrieval:8.03s Single retrieval:12.71s Ψ-RAG Tree indexing:124s↑Abstraction:10,425s↓Total:10,549s↓ Tree indexing:258s↑Abstraction:11,899s↓Total:12,157s↓ Tree retrieval:0.19sSparse retrieval:<0.01sReranking:0.79sTotal:0.98s↑ Tree retrieval:0.19sSparse retrieval:<0.01sReranking:1.07s↑Total:1.26s↑ Agentic retrieval:8.49s Agentic",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 71,
+    "page": 9,
+    "text": ".79sTotal:0.98s↑ Tree retrieval:0.19sSparse retrieval:<0.01sReranking:1.07s↑Total:1.26s↑ Agentic retrieval:8.49s Agentic retrieval:19.66s↓ Ψ-RAG(Abstraction: L3-8B;R&A Agent: G3-27B;Reranker: BGE) Tree indexing:128s↑Abstraction:2,058s↑Total:2,186s↑ Tree indexing:265s↑Abstraction:2,222s↑Total:2,487s↑ Tree retrieval:0.19sSparse retrieval:<0.01sReranking:0.56s↑Total:0.75s↑ Tree retrieval:0.19sSparse retrieval:<0.01sReranking:0.37s↑Total:0.56s↑ Agentic retrieval:5.45s↑Agentic retrieval:7.17s↑ We also employ two popular closed-source LLMs: GPT- 5-Mini (OpenAI, 2025) and Gemini-2.5-Flash (Comanici et al., 2025), as the R&A agent in Ψ-RAG. The results are presented in Table 7. Even with a much smal",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 72,
+    "page": 9,
+    "text": ".5-Flash (Comanici et al., 2025), as the R&A agent in Ψ-RAG. The results are presented in Table 7. Even with a much smaller size than L3-70B, both models yield certain improvements in F1 score. For instance, employing Gemini-2.5-Flash as the R&A agent achieves a notably high F1 score of 51.86%. 5.6. Efficiency Analysis As Ψ-RAG is based on AHC, the computation, sorting, and storage of the similarity matrix introduce time and space complexities of O(n2 logn) and O(n2), respectively3. Sim- ilarly, the iterative merging and collapse process takesO(n2) time. However, the highly optimized matrix multiplication and sorting techniques make our proposed framework still efficient for a domain-specifi",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 73,
+    "page": 9,
+    "text": " optimized matrix multiplication and sorting techniques make our proposed framework still efficient for a domain-specific index. Table 8 compares the time efficiency ofΨ-RAG with other baseline methods. Our abstract tree indexing is very fast, tak- ing only 258 seconds on MuSiQue with 1.3 million tokens (the similarity ranking process only takes ∼30s), which is 6.5× faster than RAPTOR and considerably more efficient than HippoRAG 2 on domain-specific corpora4. However, as Ψ-RAG includes more abstract nodes, it takes more time for abstraction. For retrieval efficiency, the top-down search algorithm inherently has O(logn) complexity, resulting in lower average retrieval latency compared to Hip",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 74,
+    "page": 9,
+    "text": "op-down search algorithm inherently has O(logn) complexity, resulting in lower average retrieval latency compared to HippoRAG 2. While Ψ-RAG’s iterative agentic retrieval process increases the latency, it is proportional to the complexity of the user demand (one additional retrieval attempt opportunity only brings an increment of 0.46s compared to RAPTOR on 3We omit the vector dimension d as d≪n in the real-world scenario. 4Existing Graph-RAG papers tend not to include OpenIE ex- traction in the calculation of indexing time. This may lead to a significant inconsistency between the reported time and the actual running time. HotpotQA), so we believe that it is justified in quality im- provemen",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 75,
+    "page": 9,
+    "text": "een the reported time and the actual running time. HotpotQA), so we believe that it is justified in quality im- provement for complex queries. Considering the limitations of similarity ranking when ap- plied to industrial-scale corpora with 10M+ and even 100M+ tokens, we further propose two efficient tree-building ex- tensions for Ψ-RAG:BucketingandApproximate Near- est Neighbor Search with Hierarchical Navigable Small World (HNSW)(Malkov & Yashunin, 2018). See Appendix E for details. More experiment results.Appendix D provides more extensive results, including case studies, failure studies, and more analyses towards the effectiveness of Ψ-RAG components. 6. Conclusion We propose Ψ-RAG, a hi",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 76,
+    "page": 9,
+    "text": ", failure studies, and more analyses towards the effectiveness of Ψ-RAG components. 6. Conclusion We propose Ψ-RAG, a hierarchical Tree-RAG framework supporting corpus-level indexing and cross-document multi- hop user questions. By a hierarchical clustering-based ab- stract tree index and a multi-granular agentic retriever, Ψ- RAG addresses key limitations of k-means-type tree in- dexes such as poor distribution adaptability, structural isola- tion, and coarse abstraction. Extensive experimental results demonstrate that Ψ-RAG achieves substantial gains across tasks of diverse granularities, promoting the development of tree-RAG in the rapidly evolving era of LLMs. Acknowledgements This work ",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 77,
+    "page": 9,
+    "text": "se granularities, promoting the development of tree-RAG in the rapidly evolving era of LLMs. Acknowledgements This work was partially supported by the Guangdong Provin- cial Natural Science Foundation General Program (Grant No. 2026A1515012118). We thank Linxiao Cao for his assistance in the comparative experiment. We also thank the anonymous reviewers, the Associate Chair, the Program Chair, etc. for their construc- tive feedback and recognition of this work. 9",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 78,
+    "page": 10,
+    "text": "Hierarchical Abstract Tree for Cross-Document Retrieval-Augmented Generation Impact Statement This work focuses on retrieval-augmented generation (RAG) for large language models (LLMs) with a structured in- dex. While this work may have broad applications in knowledge-intensive natural language processing tasks, we do not identify any societal impacts that extend beyond those common to LLMs and retrieval systems. References Arivazhagan, M. G., Liu, L., Qi, P., Chen, X., Wang, W. Y ., and Huang, Z. Hybrid hierarchical retrieval for open- domain question answering. InFindings of the Asso- ciation for Computational Linguistics: ACL 2023, pp. 10680–10689, 2023. Asai, A., Wu, Z., Wang, Y ., Sil, ",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 79,
+    "page": 10,
+    "text": " of the Asso- ciation for Computational Linguistics: ACL 2023, pp. 10680–10689, 2023. Asai, A., Wu, Z., Wang, Y ., Sil, A., and Hajishirzi, H. Self- RAG: Learning to retrieve, generate, and critique through self-reflection. InProceedings of the 12th International Conference on Learning Representations, 2024. Assran, M., Balestriero, R., Duval, Q., Bordes, F., Misra, I., Bojanowski, P., Vincent, P., Rabbat, M., and Ballas, N. The hidden uniform cluster prior in self-supervised learn- ing. InProceedings of the 11th International Conference on Learning Representations, 2023. Banko, M., Cafarella, M. J., Soderland, S., Broadhead, M., and Etzioni, O. Open information extraction from the web. InPr",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 80,
+    "page": 10,
+    "text": "anko, M., Cafarella, M. J., Soderland, S., Broadhead, M., and Etzioni, O. Open information extraction from the web. InProceedings of the 20th International Joint Conference on Artifical intelligence, pp. 2670–2676, 2007. Bentley, J. L. Multidimensional binary search trees used for associative searching.Communications of the ACM, 18 (9):509–517, 1975. Chami, I., Gu, A., Chatziafratis, V ., and R´e, C. From trees to continuous embeddings and back: Hyperbolic hierarchi- cal clustering. InProceedings of the 34th International Conference on Neural Information Processing Systems, volume 33, pp. 15065–15076, 2020. Charikar, M. and Chatziafratis, V . Approximate hierarchical clustering via sparsest ",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 81,
+    "page": 10,
+    "text": " volume 33, pp. 15065–15076, 2020. Charikar, M. and Chatziafratis, V . Approximate hierarchical clustering via sparsest cut and spreading metrics. In Proceedings of the 38th Annual ACM-SIAM Symposium on Discrete Algorithms, pp. 841–854. SIAM, 2017. Chen, B., Guo, Z., Yang, Z., Chen, Y ., Chen, J., Liu, Z., Shi, C., and Yang, C. PathRAG: Pruning graph-based retrieval augmented generation with relational paths. In Proceedings of the 40th AAAI Conference on Artificial Intelligence, 2026. Chen, T., Wang, H., Chen, S., Yu, W., Ma, K., Zhao, X., Zhang, H., and Yu, D. Dense X Retrieval: What retrieval granularity should we use? InProceedings of the 2024 Conference on Empirical Methods in Natural La",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 82,
+    "page": 10,
+    "text": "ieval: What retrieval granularity should we use? InProceedings of the 2024 Conference on Empirical Methods in Natural Language Processing, pp. 15159–15177, 2024. Comanici, G., Bieber, E., Schaekermann, M., Pasupat, I., Sachdeva, N., Dhillon, I., Blistein, M., Ram, O., Zhang, D., Rosen, E., et al. Gemini 2.5: Pushing the frontier with advanced reasoning, multimodality, long context, and next generation agentic capabilities.arXiv preprint arXiv:2507.06261, 2025. Cormack, G. V ., Clarke, C. L., and Buettcher, S. Reciprocal rank fusion outperforms condorcet and individual rank learning methods. InProceedings of the 32nd interna- tional ACM SIGIR conference on Research and develop- ment in inform",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 83,
+    "page": 10,
+    "text": "learning methods. InProceedings of the 32nd interna- tional ACM SIGIR conference on Research and develop- ment in information retrieval, pp. 758–759, 2009. Dasgupta, S. A cost function for similarity-based hierarchi- cal clustering. InProceedings of the forty-eighth annual ACM symposium on Theory of Computing, pp. 118–127, 2016. Douze, M., Guzhva, A., Deng, C., Johnson, J., Szilvasy, G., Mazar´e, P.-E., Lomeli, M., Hosseini, L., and J ´egou, H. The Faiss library.IEEE Transactions on Big Data, 2025. Dubey, A., Jauhri, A., Pandey, A., Kadian, A., Al- Dahle, A., Letman, A., Mathur, A., Yang, A., Fan, A., et al. The Llama 3 herd of models.arXiv preprint arXiv:2407.21783, 2024. Edge, D., Trinh, H",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 84,
+    "page": 10,
+    "text": "thur, A., Yang, A., Fan, A., et al. The Llama 3 herd of models.arXiv preprint arXiv:2407.21783, 2024. Edge, D., Trinh, H., Cheng, N., Bradley, J., Chao, A., Mody, A., Truitt, S., Metropolitansky, D., Ness, R. O., and Larson, J. From local to global: A graph RAG ap- proach to query-focused summarization.arXiv preprint arXiv:2404.16130, 2024. Fan, W., Ding, Y ., Ning, L., Wang, S., Li, H., Yin, D., Chua, T.-S., and Li, Q. A survey on RAG meeting LLMs: Towards retrieval-augmented large language models. In Proceedings of the 30th ACM SIGKDD Conference on Knowledge Discovery and Data Mining, pp. 6491–6501, 2024. Fatehkia, M., Lucas, J. K., and Chawla, S. T-RAG: lessons from the LLM trenches.arXiv",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 85,
+    "page": 10,
+    "text": " Data Mining, pp. 6491–6501, 2024. Fatehkia, M., Lucas, J. K., and Chawla, S. T-RAG: lessons from the LLM trenches.arXiv preprint arXiv:2402.07483, 2024. Florek, K., Łukaszewicz, J., Perkal, J., Steinhaus, H., and Zubrzycki, S. Sur la liaison et la division des points d’un ensemble fini. InColloquium Mathematicum, volume 2, pp. 282–285, 1951. Gao, L., Dai, Z., Chen, T., Fan, Z., Van Durme, B., and Callan, J. Complement lexical retrieval model with se- mantic residual embeddings. In43rd European Confer- ence on Information Retrieval, pp. 146–160. Springer, 2021. 10",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 86,
+    "page": 11,
+    "text": "Hierarchical Abstract Tree for Cross-Document Retrieval-Augmented Generation Ghalandari, D. G., Hokamp, C., Glover, J., Ifrim, G., et al. A large-scale multi-document summarization dataset from the Wikipedia current events portal. InProceedings of the 58th Annual Meeting of the Association for Computa- tional Linguistics, pp. 1302–1308, 2020. Guo, Z., Xia, L., Yu, Y ., Ao, T., and Huang, C. LightRAG: Simple and fast retrieval-augmented generation. InFind- ings of the Association for Computational Linguistics: EMNLP 2025, 2025. Gupta, N., Chang, W.-C., Bui, N., Hsieh, C.-J., and Dhillon, I. S. LLM-guided hierarchical retrieval.arXiv preprint arXiv:2510.13217, 2025. Ho, X., Nguyen, A.-K. D., S",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 87,
+    "page": 11,
+    "text": " and Dhillon, I. S. LLM-guided hierarchical retrieval.arXiv preprint arXiv:2510.13217, 2025. Ho, X., Nguyen, A.-K. D., Sugawara, S., and Aizawa, A. Constructing a multi-hop QA dataset for comprehensive evaluation of reasoning steps. InProceedings of the 28th International Conference on Computational Linguistics, pp. 6609–6625, 2020. Huang, H., Huang, Y ., Yang, J., Pan, Z., Chen, Y ., Ma, K., Chen, H., and Cheng, J. Retrieval-augmented gen- eration with hierarchical knowledge.arXiv preprint arXiv:2503.10150, 2025. Izacard, G., Caron, M., Hosseini, L., Riedel, S., Bojanowski, P., Joulin, A., and Grave, E. Unsupervised dense infor- mation retrieval with contrastive learning.Transactions on Mac",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 88,
+    "page": 11,
+    "text": ", P., Joulin, A., and Grave, E. Unsupervised dense infor- mation retrieval with contrastive learning.Transactions on Machine Learning Research, 2022. Jardine, N. and van Rijsbergen, C. J. The use of hierarchic clustering in information retrieval.Information Storage and Retrieval, 7(5):217–240, 1971. Jim´enez Guti´errez, B., Shu, Y ., Gu, Y ., Yasunaga, M., and Su, Y . HippoRAG: Neurobiologically inspired long-term memory for large language models.Proceedings of the 38th Conference in Neural Information Processing Sys- tems, pp. 59532–59569, 2024. Jim´enez Guti´errez, B., Shu, Y ., Qi, W., Zhou, S., and Su, Y . From RAG to memory: Non-parametric continual learning for large language models. I",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 89,
+    "page": 11,
+    "text": "u, Y ., Qi, W., Zhou, S., and Su, Y . From RAG to memory: Non-parametric continual learning for large language models. InProceedings of the 42nd International Conference on Machine Learning, pp. 21497–21515, 2025. Jin, B., Yoon, J., Han, J., and Arik, S. O. Long-context LLMs meet RAG: Overcoming challenges for long in- puts in RAG. InProceedings of the 13th International Conference on Learning Representations, 2025a. Jin, J., Li, X., Dong, G., Zhang, Y ., Zhu, Y ., Wu, Y ., Li, Z., Qi, Y ., and Dou, Z. Hierarchical document refinement for long-context retrieval-augmented generation. InProceed- ings of the 63rd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Pa",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 90,
+    "page": 11,
+    "text": "neration. InProceed- ings of the 63rd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), pp. 3502–3520, 2025b. Jin, J., Zhu, Y ., Dou, Z., Dong, G., Yang, X., Zhang, C., Zhao, T., Yang, Z., and Wen, J.-R. FlashRAG: A mod- ular toolkit for efficient retrieval-augmented generation research. InCompanion Proceedings of the ACM on Web Conference, pp. 737–740, 2025c. Jones, C. H. Generalized hockey stick identities and n- dimensional blockwalking.The Fibonacci Quarterly, 34 (3):280–288, 1996. Kamath, A., Ferret, J., Pathak, S., Vieillard, N., Merhej, R., Perrin, S., Matejovicova, T., Ram ´e, A., Rivi `ere, M., et al. Gemma 3 technical report.arXiv preprint arX",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 91,
+    "page": 11,
+    "text": " Merhej, R., Perrin, S., Matejovicova, T., Ram ´e, A., Rivi `ere, M., et al. Gemma 3 technical report.arXiv preprint arXiv:2503.19786, 2025. Karpukhin, V ., Oguz, B., Min, S., Lewis, P., Wu, L., Edunov, S., Chen, D., and Yih, W.-t. Dense passage retrieval for open-domain question answering. InProceedings of the 2020 Conference on Empirical Methods in Natural Language Processing (EMNLP), pp. 6769–6781, 2020. Khattab, O. and Zaharia, M. ColBERT: Efficient and ef- fective passage search via contextualized late interaction over BERT. InProceedings of the 43rd International ACM SIGIR conference on research and development in Information Retrieval, pp. 39–48, 2020. Koˇcisk`y, T., Schwarz, J., Blun",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 92,
+    "page": 11,
+    "text": "SIGIR conference on research and development in Information Retrieval, pp. 39–48, 2020. Koˇcisk`y, T., Schwarz, J., Blunsom, P., Dyer, C., Hermann, K. M., Melis, G., and Grefenstette, E. The NarrativeQA reading comprehension challenge.Transactions of the Association for Computational Linguistics, 6:317–328, 2018. Kwiatkowski, T., Palomaki, J., Redfield, O., Collins, M., Parikh, A., Alberti, C., Epstein, D., Polosukhin, I., De- vlin, J., Lee, K., et al. Natural Questions: a benchmark for question answering research.Transactions of the Association for Computational Linguistics, 7:453–466, 2019. Lee, C., Roy, R., Xu, M., Raiman, J., Shoeybi, M., Catan- zaro, B., and Ping, W. NV-Embed: Improved ",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 93,
+    "page": 11,
+    "text": "s, 7:453–466, 2019. Lee, C., Roy, R., Xu, M., Raiman, J., Shoeybi, M., Catan- zaro, B., and Ping, W. NV-Embed: Improved techniques for training LLMs as generalist embedding models. In Proceedings of the 13th International Conference on Learning Representations, 2025. Lee, D., Hwang, S.-w., Lee, K., Choi, S., and Park, S. On complementarity objectives for hybrid retrieval. InPro- ceedings of the 61st Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), pp. 13357–13368, 2023. Lewis, P., Perez, E., Piktus, A., Petroni, F., Karpukhin, V ., Goyal, N., K¨uttler, H., Lewis, M., Yih, W.-t., Rockt¨aschel, T., et al. Retrieval-augmented generation for knowledge- int",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 94,
+    "page": 11,
+    "text": "yal, N., K¨uttler, H., Lewis, M., Yih, W.-t., Rockt¨aschel, T., et al. Retrieval-augmented generation for knowledge- intensive NLP tasks. InProceedings of the 34th Con- ference on Neural Information Processing Systems, pp. 9459–9474, 2020. 11",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 95,
+    "page": 12,
+    "text": "Hierarchical Abstract Tree for Cross-Document Retrieval-Augmented Generation Li, C., Liu, Z., Xiao, S., and Shao, Y . Making large language models a better foundation for dense retrieval.arXiv preprint arXiv:2312.15503, 2023. Li, M., Miao, S., and Li, P. Simple is effective: The roles of graphs and large language models in knowledge-graph- based retrieval-augmented generation. InProceedings of the 13th International Conference on Learning Represen- tations, 2025a. Li, X., Bai, Y ., Jin, B., Zhu, F., Pan, L., and Cao, Y . Long context vs. RAG: Strategies for processing long docu- ments in LLMs. InProceedings of the 48th International ACM SIGIR Conference on Research and Development in Informa",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 96,
+    "page": 12,
+    "text": "docu- ments in LLMs. InProceedings of the 48th International ACM SIGIR Conference on Research and Development in Information Retrieval, pp. 4110–4113, 2025b. Li, X., Dong, G., Jin, J., Zhang, Y ., Zhou, Y ., Zhu, Y ., Zhang, P., and Dou, Z. Search-o1: Agentic search-enhanced large reasoning models. InProceedings of the 2025 Conference on Empirical Methods in Natural Language Processing, pp. 5420–5438, 2025c. Li, Y ., Zhang, W., Yang, Y ., Huang, W.-C., Wu, Y ., Luo, J., Bei, Y ., Zou, H. P., Luo, X., Zhao, Y ., et al. To- wards agentic RAG with deep reasoning: A survey of RAG-reasoning systems in LLMs. InFindings of the As- sociation for Computational Linguistics: EMNLP 2025, 2025d. Liang, J",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 97,
+    "page": 12,
+    "text": "AG-reasoning systems in LLMs. InFindings of the As- sociation for Computational Linguistics: EMNLP 2025, 2025d. Liang, J., Bai, L., Dang, C., and Cao, F. The K-means-type algorithms versus imbalanced data distributions.IEEE Transactions on Fuzzy Systems, 20(4):728–745, 2012. Liu, J. LlamaIndex, 2022. URL https://github. com/jerryjliu/llama_index. Liu, Y ., Hashimoto, K., Zhou, Y ., Yavuz, S., Xiong, C., and Yu, P. S. Dense hierarchical retrieval for open-domain question answering. InFindings of the Association for Computational Linguistics: EMNLP 2021, pp. 188–200, 2021. L`u, X. H. BM25S: Orders of magnitude faster lexi- cal search via eager sparse scoring.arXiv preprint arXiv:2407.03618, 20",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 98,
+    "page": 12,
+    "text": "u, X. H. BM25S: Orders of magnitude faster lexi- cal search via eager sparse scoring.arXiv preprint arXiv:2407.03618, 2024. Malkov, Y . A. and Yashunin, D. A. Efficient and robust approximate nearest neighbor search using hierarchical navigable small world graphs.IEEE Transactions on Pattern Analysis and Machine Intelligence, 42(4):824– 836, 2018. Mallen, A., Asai, A., Zhong, V ., Das, R., Khashabi, D., and Hajishirzi, H. When not to trust language models: Inves- tigating effectiveness of parametric and non-parametric memories. InProceedings of the 61st Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), pp. 9802–9822, 2023. Moseley, B. and Wang, J. R. Ap",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 99,
+    "page": 12,
+    "text": "e Association for Computational Linguistics (Volume 1: Long Papers), pp. 9802–9822, 2023. Moseley, B. and Wang, J. R. Approximation bounds for hi- erarchical clustering: average linkage, bisecting K-means, and local search. InProceedings of the 31st International Conference on Neural Information Processing Systems, pp. 3097–3106, 2017. Nair, I., Garimella, A., Srinivasan, B. V ., Modani, N., Chhaya, N., Karanam, S., and Shekhar, S. A neural CRF-based hierarchical approach for linear text segmen- tation. InFindings of the Association for Computational Linguistics: EACL 2023, pp. 883–893, 2023. Omohundro, S. M.Five balltree construction algorithms. International Computer Science Institute Berk",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 100,
+    "page": 12,
+    "text": " pp. 883–893, 2023. Omohundro, S. M.Five balltree construction algorithms. International Computer Science Institute Berkeley, 1989. OpenAI. Introducing GPT-5. 2025. URL https:// openai.com/index/introducing-gpt-5/. Peng, B., Zhu, Y ., Liu, Y ., Bo, X., Shi, H., Hong, C., Zhang, Y ., and Tang, S. Graph retrieval-augmented generation: A survey.ACM Transactions on Information Systems, 2025. Rezazadeh, A., Li, Z., Wei, W., and Bao, Y . From iso- lated conversations to hierarchical schemas: Dynamic tree memory representation for LLMs. InProceedings of the 13th International Conference on Learning Represen- tations, 2025. Robertson, S., Zaragoza, H., et al. The probabilistic rele- vance framework:",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 101,
+    "page": 12,
+    "text": "erence on Learning Represen- tations, 2025. Robertson, S., Zaragoza, H., et al. The probabilistic rele- vance framework: BM25 and beyond.Foundations and Trends® in Information Retrieval, 3(4):333–389, 2009. Sarthi, P., Abdullah, S., Tuli, A., Khanna, S., Goldie, A., and Manning, C. D. RAPTOR: Recursive abstractive processing for tree-organized retrieval. InProceedings of the 12th International Conference on Learning Represen- tations, 2024. Sokal, R. R. and Michener, C. D. A statistical method for evaluating systematic relationships. 1958. Sparck Jones, K. A statistical interpretation of term speci- ficity and its application in retrieval.Journal of documen- tation, 28(1):11–21, 1972. Tang, ",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 102,
+    "page": 12,
+    "text": "erpretation of term speci- ficity and its application in retrieval.Journal of documen- tation, 28(1):11–21, 1972. Tang, Y . and Yang, Y . MultiHop-RAG: Benchmarking retrieval-augmented generation for multi-hop queries. In First Conference on Language Modeling, 2024. Tao, W., Xing, X., Chen, Y ., Huang, L., and Xu, X. TreeRAG: Unleashing the power of hierarchical storage for enhanced knowledge retrieval in long documents. In Findings of the Association for Computational Linguis- tics: ACL 2025, pp. 356–371, 2025. Trivedi, H., Balasubramanian, N., Khot, T., and Sabharwal, A. MuSiQue: Multihop questions via single-hop ques- tion composition.Transactions of the Association for Computational Ling",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 103,
+    "page": 12,
+    "text": "MuSiQue: Multihop questions via single-hop ques- tion composition.Transactions of the Association for Computational Linguistics, 10:539–554, 2022. 12",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 104,
+    "page": 13,
+    "text": "Hierarchical Abstract Tree for Cross-Document Retrieval-Augmented Generation Trivedi, H., Balasubramanian, N., Khot, T., and Sabharwal, A. Interleaving retrieval with chain-of-thought reasoning for knowledge-intensive multi-step questions. InPro- ceedings of the 61st annual meeting of the association for computational linguistics (volume 1: long papers), pp. 10014–10037, 2023. Wang, S., Fang, Y ., Zhou, Y ., Liu, X., and Ma, Y . ArchRAG: Attributed community-based hierarchi- cal retrieval-augmented generation.arXiv preprint arXiv:2502.09891, 2025. Wei, J., Wang, X., Schuurmans, D., Bosma, M., Xia, F., Chi, E., Le, Q. V ., Zhou, D., et al. Chain-of-thought prompting elicits reasoning in large",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 105,
+    "page": 13,
+    "text": "ans, D., Bosma, M., Xia, F., Chi, E., Le, Q. V ., Zhou, D., et al. Chain-of-thought prompting elicits reasoning in large language models. In Proceedings of the 36th Conference in Neural Informa- tion Processing Systems, volume 35, pp. 24824–24837, 2022. Wu, Y ., Wang, Y ., Ye, Z., Du, T., Jegelka, S., and Wang, Y . When more is less: Understanding chain-of-thought length in LLMs. InICLR 2025 Workshop on Reasoning and Planning for Large Language Models, 2025. Xiao, Y ., Dong, J., Zhou, C., Dong, S., Zhang, Q.-w., Yin, D., Sun, X., and Huang, X. GraphRAG-Bench: Challenging domain-specific reasoning for evaluating graph retrieval-augmented generation.arXiv preprint arXiv:2506.02404, 2025. Xiong",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 106,
+    "page": 13,
+    "text": "main-specific reasoning for evaluating graph retrieval-augmented generation.arXiv preprint arXiv:2506.02404, 2025. Xiong, H., Wu, J., and Chen, J. K-means clustering ver- sus validation measures: a data distribution perspective. InProceedings of the 12th ACM SIGKDD international conference on Knowledge discovery and data mining, pp. 779–784, 2006. Yang, Z., Qi, P., Zhang, S., Bengio, Y ., Cohen, W., Salakhut- dinov, R., and Manning, C. D. HotpotQA: A dataset for diverse, explainable multi-hop question answering. In Proceedings of the 2018 conference on empirical methods in natural language processing, pp. 2369–2380, 2018. Yao, S., Zhao, J., Yu, D., Du, N., Shafran, I., Narasimhan, K. R., and",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 107,
+    "page": 13,
+    "text": "natural language processing, pp. 2369–2380, 2018. Yao, S., Zhao, J., Yu, D., Du, N., Shafran, I., Narasimhan, K. R., and Cao, Y . ReAct: Synergizing reasoning and acting in language models. InProceedings of the 11th International Conference on Learning Representations, 2022. Zhang, H., Feng, T., and You, J. Graph of records: Boosting retrieval augmented generation for long-context summa- rization with graphs. InProceedings of the 63rd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), pp. 23780–23799, 2025a. Zhang, X., Chen, Y ., Hu, S., Xu, Z., Chen, J., Hao, M., Han, X., Thai, Z., Wang, S., Liu, Z., et al. ∞Bench: Extending long context evaluation beyo",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 108,
+    "page": 13,
+    "text": ", Xu, Z., Chen, J., Hao, M., Han, X., Thai, Z., Wang, S., Liu, Z., et al. ∞Bench: Extending long context evaluation beyond 100k tokens. InProceed- ings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), pp. 15262–15277, 2024a. Zhang, X., Wang, M., Yang, X., Wang, D., Feng, S., and Zhang, Y . Hierarchical retrieval-augmented generation model with rethink for multi-hop question answering. arXiv preprint arXiv:2408.11875, 2024b. Zhang, Y ., Li, M., Long, D., Zhang, X., Lin, H., Yang, B., Xie, P., Yang, A., Liu, D., Lin, J., et al. Qwen3 Embed- ding: Advancing text embedding and reranking through foundation models.arXiv preprint arXiv:2506.05176,",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 109,
+    "page": 13,
+    "text": "al. Qwen3 Embed- ding: Advancing text embedding and reranking through foundation models.arXiv preprint arXiv:2506.05176, 2025b. Zhao, Y ., Zhu, J., Guo, Y ., He, K., and Li, X. E2GraphRAG: Streamlining graph-based RAG for high efficiency and effectiveness.arXiv preprint arXiv:2505.24226, 2025. Zhong, M., Yin, D., Yu, T., Zaidi, A., Mutuma, M., Jha, R., Hassan, A., Celikyilmaz, A., Liu, Y ., Qiu, X., et al. QM- Sum: A new benchmark for query-based multi-domain meeting summarization. InProceedings of the 2021 Con- ference of the North American Chapter of the Association for Computational Linguistics: Human Language Tech- nologies, pp. 5905–5921, 2021. 13",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 110,
+    "page": 14,
+    "text": "Hierarchical Abstract Tree for Cross-Document Retrieval-Augmented Generation A. Algorithms ofΨ-RAG Algorithm 1 shows the algorithm of Abstract Tree Indexing, while Algorithm 2 and Algorithm 3 show the algorithm of Multi-granular Agentic Retrieval. Algorithm 1Abstract Tree Indexing Input:pairwise similarity matrixS Descending sorts(i, j)for all1≤i < j≤n InitializeT= (V=∅,E=∅) forrank(u, v) = 1ton−1,(u, v)∈Sdo ifp(u) =p(v) =∅then Add nodeainVand setc(a) ={u, v} else ifroot(u)̸=root(v)andδ(u) =δ(v)then Add node a in V and set c(a) ={root(u), root(v)} else ifroot(u)̸=root(v)andδ(u)> δ(v)then c(pδ(v)+1 (u))←c(p δ(v)+1 (u))∪ {root(v)} else ifroot(u)̸=root(v)andδ(u)< δ(v)then c(pδ(u)+1(v))←c(p δ(u)",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 111,
+    "page": 14,
+    "text": "δ(u)> δ(v)then c(pδ(v)+1 (u))←c(p δ(v)+1 (u))∪ {root(v)} else ifroot(u)̸=root(v)andδ(u)< δ(v)then c(pδ(u)+1(v))←c(p δ(u)+1(v))∪ {root(u)} end if end for Tree rebalancing by splitting overload nodes Generate abstract text for every abstract node Output:abstract treeT Algorithm 2Tree Retrievalr(q,T) Input:query q, tree index T , number of retrieved chunks k, maximum retrieval stepi max Initialize candidate nodesV 0 ={root(T)} forl= 0toδ(T)do ifl=δ(T)and|{u|δ(u) =l}| ≤kthen D∗ =ℓ(T) break else if|{u|δ(u) =l}| ≤kthen Vl+1 ={u|δ(u) =l+ 1} continue end if {Top-knearest neighbor search} Ul =topk(V l, q;k) ifl=δ(T)then D∗ =U l else Vl+1 = S u∈Ul c(u) end if end for Output:top-kchunksD ∗ Algorithm 3M",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 112,
+    "page": 14,
+    "text": "earch} Ul =topk(V l, q;k) ifl=δ(T)then D∗ =U l else Vl+1 = S u∈Ul c(u) end if end for Output:top-kchunksD ∗ Algorithm 3Multi-granular Agentic Retrieval Input:user query q, tree index T , sparse index I, LLM agentf(·;I(·)), number of retrieved chunksk {Hybrid retrieval} InitializeD ∗ 0 =r(q,T)∪r(q,I) Current retrieval stepi= 1 repeat ifi=i max then SetI(D ∗ i )such that<action>=<answer> end if Generatea i = (Ri,<action>,·)from (3) ifa i = (Ri,<retrieve>, q′ i)then D∗ i =r(q ′ i,T)∪r(q ′ i,I) i←i+ 1 end if untila i = (R,<answer>, y) Output:answery 15",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 113,
+    "page": 15,
+    "text": "Hierarchical Abstract Tree for Cross-Document Retrieval-Augmented Generation B. Theoretical Proofs B.1. Proof of Theorem 4.1 Theorem 4.1(Uniform effect ofk-means (Liang et al., 2012)).GivenLin(4), we have L=−A X 1≤i<j≤k ninj∥µi −µ j∥2 +B(7) whereAandBare constants only relative to the data. Proof. Let d(ci, cj) = P xi∈ci,xj ∈cj ∥xi −x j∥2. We first denote the sum of all pairwise distances of data samplesx∈ℓ(T) withinkclusters as Pk = nX i=1 nX j=1 ∥xi −x j∥2 = kX i=1 d(ci, ci) + 2 X 1≤i<j≤k d(ci, cj)(8) Then, we are going to prove Pk = kX i=1 n ni d(ci, ci) + 2L↔ k ,(9) where L↔ k = X 1≤i<j≤k ninj∥µi −µ j∥2 (10) with mathematical induction. Fork= 1, we haveL ↔ 1 = 0as condition1≤i < j≤kcanno",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 114,
+    "page": 15,
+    "text": "re L↔ k = X 1≤i<j≤k ninj∥µi −µ j∥2 (10) with mathematical induction. Fork= 1, we haveL ↔ 1 = 0as condition1≤i < j≤kcannot be met. SoP 1 = P x,y∈ℓ(T) ∥x−y∥ 2 which meets (9). Fork= 2, we have P2 =d(c 1, c1) +d(c 2, c2) + 2d(c1, c2)(11) = X 1≤i<j≤n1 ∥xi −x j∥2 + X 1≤i<j≤n2 ∥xi −x j∥2 + 2 X 1≤i≤n1 X 1≤j≤n2 ∥xi −x j∥2 (12) = 2(n1 −1) n1X i=1 ∥xi∥2 −4 X 1≤i<j≤n1 xixj + 2(n1 −2) n2X i=1 ∥xi∥2 −4 X 1≤i<j≤n2 xixj + 2n2 n1X i=1 ∥xi∥2 + 2n1 n2X i=1 ∥xi∥2 −4 X 1≤i≤n1 X 1≤j≤n2 xixj (13) =   2n(n1 −1) n1 n1X i=1 ∥xi∥2 −4· n n1 X 1≤i<j≤n1 xixj   +   2n(n2 −1) n2 n2X i=1 ∥xi∥2 −4· n n2 X 1≤i<j≤n2 xixj   +   2n2 n1   n1X i=1 ∥xi∥2 + 2 X 1≤i<j≤n1 xixj   + 2n1 n2   n2X i=1 ∥xi∥2 + 2 X 1≤i<j≤n2",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 115,
+    "page": 15,
+    "text": " n2 X 1≤i<j≤n2 xixj   +   2n2 n1   n1X i=1 ∥xi∥2 + 2 X 1≤i<j≤n1 xixj   + 2n1 n2   n2X i=1 ∥xi∥2 + 2 X 1≤i<j≤n2 xixj   −4 X 1≤i≤n1 X 1≤j≤n2 xixj   (14) = n n1 X 1≤i<j≤n1 ∥xi −x j∥2 + n n2 X 1≤i<j≤n2 ∥xi −x j∥2 + 2n1n2∥µ1 −µ 2∥2 (15) = n n1 d(c1, c1) + n n2 d(c2, c2) + 2L↔ 2 (16) which meets (9). Assume (9) holds withk=K−1. Then fork=K, we have PK =P ˆi K−1 +d(c i, ci) + 2 X 1≤j̸=i≤K d(ci, cj)(17) 16",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 116,
+    "page": 16,
+    "text": "Hierarchical Abstract Tree for Cross-Document Retrieval-Augmented Generation whereP ˆi K−1 is the sum of pairwise distances withinK−1clusters excluding clusterc i fori= 1,2,· · ·, K. We sum up (17) for every clusterc i and get KP K = KX i=1 P ˆi K−1 + KX i=1 d(ci, ci) + 4 X 1≤i<j≤K d(ci, cj)(18) With our assumption: P ˆi K−1 = X 1≤j̸=i≤K n−n i nj d(cj, cj) + 2 X 1≤j<κ̸=i≤K njnκ∥µj −µ κ∥2 (19) So KX i=1 P ˆi K−1 = (K−2)   KX i=1 n ni d(ci, ci) + 2 X 1≤i<j≤K ninj∥µi −µ j∥2   + kX i=1 d(ci, ci),(20) and from (8), we have KP K = (K−2) KX i=1 n ni d(ci, ci) + 2L↔ K ! + 2 kX i=1 d(ci, ci) + 4 X 1≤i<j≤K d(ci, cj)(21) = (K−2) KX i=1 n ni d(ci, ci) + 2L↔ K ! + 2PK (22) ⇒ P K = KX i=1 n ni d(ci, c",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 117,
+    "page": 16,
+    "text": "i=1 d(ci, ci) + 4 X 1≤i<j≤K d(ci, cj)(21) = (K−2) KX i=1 n ni d(ci, ci) + 2L↔ K ! + 2PK (22) ⇒ P K = KX i=1 n ni d(ci, ci) + 2L↔ K (23) So (9) holds. With (9), we can now writeLas L= kX i=1 X xi∈ci ∥xi −µ i∥2 = 1 2 kX i=1 d(ci, ci) ni (24) = 1 2n kX i=1 \u0012 n ni d(ci, ci) + 2L↔ k \u0013 − 1 n kX i=1 L↔ k (25) =− 1 n L↔ k + Pk 2n ,(26) which completes the proof withA=− 1 n andB= Pk 2n . Remark.Theorem 4.1 proves that the objective of k-means is essentially maximizing L↔ k = P 1≤i<j≤k ninj∥µi −µ j∥2. If we assumen inj and∥µ i −µ j∥2 is independent, the maximization ofn inj leads ton 1 =n 2 =· · ·=nk =n/k. B.2. Proof of Theorem 4.3 We first introduce necessary lemmas for Theorem 4.3 and Theorem 4.4. L",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 118,
+    "page": 16,
+    "text": " 1 =n 2 =· · ·=nk =n/k. B.2. Proof of Theorem 4.3 We first introduce necessary lemmas for Theorem 4.3 and Theorem 4.4. Lemma B.1(Modularity of Dasgupta’s cost (Dasgupta, 2016)).Let Ta be the subtree in T rooted at node a. If a different treeT ′ is constructed by replacingT a with another subtreeT ′ a satisfyingℓ(T ′ a ) =ℓ(T a), then c(T ′) =c(T)−c(T a) +c(T ′ a )(27) Proof.For any leaf pair where one leaf is insideT ′ a and the other is outside, the leaf count of its LCA is given by ccross(T ′ a ,T ′\\T ′ a ) = X u∈T ′a,v∈T ′\\T ′a |ℓ(LCA(u, v))|=n ′ a +n 1 +n 2 +· · ·(28) 17",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 119,
+    "page": 17,
+    "text": "Hierarchical Abstract Tree for Cross-Document Retrieval-Augmented Generation Here, the total number of leaves in the current subtree n′ a =n a remains unchanged regardless of the subtree structure. Therefore: c(T ′) =c(T ′ a ) +c(T ′\\T ′ a ) +c cross(T ′ a ,T ′\\T ′ a )(29) =c(T ′ a ) +c(T \\Ta) +c cross(Ta,T \\Ta)(30) =c(T ′ a ) +c(T)−c(T a)(31) wherec(T \\Ta)denotes the sum of costs among the subtrees ofTexcludingT a. Remark.The modularity of Dasgupta’s cost allows us to, without loss of generality, decompose the problem of computing the global cost into analyzing cost differences within corresponding subtrees. 𝑑 𝑒𝑐 𝑎 𝑏 𝛿(left subtree of ) = 0 𝛿(right subtree of ) = 1 𝛿(left subtree of ) = 0 𝛿",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 120,
+    "page": 17,
+    "text": "ences within corresponding subtrees. 𝑑 𝑒𝑐 𝑎 𝑏 𝛿(left subtree of ) = 0 𝛿(right subtree of ) = 1 𝛿(left subtree of ) = 0 𝛿(right subtree of ) = 1 𝑎 𝑒 𝑑𝑐 𝑏 𝑎 𝑏 𝛿(left subtree of ) = 1 𝛿(right subtree of ) = 0 𝒯AHC 𝒯 Figure 7.Illustration of ψ(·): bottom-up traversal and collapsing. Note that both TAHC and T here are unordered, so the positions of b and cinTdo not matter as long as they are children ofa. Lemma B.2 establishes the connection between the equi-depth multifurcating tree ofΨ-RAG and the binary tree of AHC. Lemma B.2(Connection between AHC and Ψ-RAG).There exists a surjection ψ:T AHC 7→ Tthat maps every binary tree TAHC to an equi-depth multifurcating treeTby iteratively performing no",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 121,
+    "page": 17,
+    "text": "urjection ψ:T AHC 7→ Tthat maps every binary tree TAHC to an equi-depth multifurcating treeTby iteratively performing node collapsing. Proof. The proof is intuitive. First, the merging process of Ψ-RAG is identical to that in an AHC tree: both of them group two nodes under a common parent. We now focus on collapsing. As illustrated in Figure 7, the process ψ(TAHC) can be viewed as a bottom-up layer-by-layer traversal process. Whenever a node is found whose subtrees have unequal depths, the root of the shallower subtree is collapsed to the corresponding node in the deepest subtree. This process iterates until every node has subtrees of equal depth. Therefore, anyT AHC can always be mapped to ",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 122,
+    "page": 17,
+    "text": "ubtree. This process iterates until every node has subtrees of equal depth. Therefore, anyT AHC can always be mapped to an equi-depth multifurcating treeT=ψ(T AHC). Remark.Lemma B.2 allows us to decompose ψ(TAHC) bottom-up into a sequence of collapsing operations. Combined with Lemma B.1, it implies that ∆c=c(ψ(T AHC))−c(T AHC) can be decomposed into a layer-by-layer summation of the cost increments introduced by node collapse. Moreover, it is obvious that Dasgupta’s cost is invariant to the order of children of a certain node, so∆cis invariant to the order of collapsing within a certain layer as well. In the following analysis, we follow the original paper (Dasgupta, 2016) by considering a ",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 123,
+    "page": 17,
+    "text": "thin a certain layer as well. In the following analysis, we follow the original paper (Dasgupta, 2016) by considering a computable scenario where the distance d= 1 for all pairs of chunks. The subsequent conclusions demonstrate that this assumption does not affect our conclusion of Ψ-RAG’s property. To analyze the non-uniformity preference ofΨ-RAG, Lemma B.3 quantifies the increment in Dasgupta’s cost introduced by node collapse. Lemma B.3(Increment of Dasgupta’s cost of node collapse).The following holds: (1) For a leaf node collapse within a tree T , let the total number of leaves be |ℓ(T)|=n , and let Ta be the subtree rooted at the abstract node a to which the leaf node u is being linked",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 124,
+    "page": 17,
+    "text": "of leaves be |ℓ(T)|=n , and let Ta be the subtree rooted at the abstract node a to which the leaf node u is being linked, with |ℓ(Ta)|=n a. This introduces an increment of Dasgupta’s cost∆c= na 2 \u0001 . (2) For an abstract node collapse within a tree T , let the number of leaves of the subtree to be collapsed Tu be n′. Let Ta be the subtree rooted at the abstract node a to which Tu is being linked. Ta has k branches with the number of leaves n1, n2,· · ·, nk, respectively. This introduces an increment of Dasgupta’s cost∆c=n ′ P 1≤i<j≤k ninj. 18",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 125,
+    "page": 18,
+    "text": "Hierarchical Abstract Tree for Cross-Document Retrieval-Augmented Generation 𝑎 𝑢⋯ ⋯ ⋯ 𝑛𝑎 𝑛 𝒯𝑎 𝑎 𝑢⋯ ⋯ ⋯ 𝑛𝑎 𝑛 𝒯𝑎 (1) within 𝒯𝑎: (2) between 𝑢 and 𝒯𝑎: (3) between 𝑢 and 𝒯 \\ 𝒯𝑎: (4) between 𝒯𝑎 and 𝒯 \\ 𝒯𝑎: 𝑐 = 𝑛𝑎 2 𝑛𝑎 𝑐 = 𝑛𝑎 𝑛 + 1 𝑐 = 𝑛 − 𝑛𝑎 𝑛 + 1 𝑐 = 𝑛𝑎 𝑛 − 𝑛𝑎 𝑛 collapse 𝑐 = 𝑛𝑎 2 𝑛𝑎 + 1 𝑐 = 𝑛𝑎 𝑛𝑎 + 1 𝑐 = 𝑛 − 𝑛𝑎 𝑛 + 1 𝑐 = 𝑛𝑎 𝑛 − 𝑛𝑎 𝑛 + 1 (1) within 𝒯𝑎: (2) between 𝑢 and 𝒯𝑎: (3) between 𝑢 and 𝒯 \\ 𝒯𝑎: (4) between 𝒯𝑎 and 𝒯 \\ 𝒯𝑎: 𝑎 ⋯ ⋯ ⋯ 𝒯𝑎 𝑛𝑘𝑛1 𝑘 ⋯ 𝑛′ 𝒯𝑢 collapse 𝑎 ⋯ ⋯ ⋯ 𝒯𝑎 𝑛𝑘𝑛1 𝑘 ⋯ 𝑛′ 𝒯𝑢 (1) between subtrees in 𝒯𝑎: 𝑐 = ෍ 1≤𝑖<𝑗≤𝑘 𝑛𝑖𝑛𝑗 ෍ 𝑚=1 𝑘 𝑛𝑚 + 𝑛′ (2) between 𝒯𝑢 and 𝒯𝑎: 𝑐 = 𝑛′ ෍ 𝑖=1 𝑘 𝑛𝑖 ⋅ ෍ 𝑖=1 𝑘 𝑛𝑖 + 𝑛′ (1) between subtrees in 𝒯𝑎: 𝑐 = ෍ 1≤𝑖<𝑗≤𝑘 𝑛𝑖𝑛𝑗 ෍ 𝑚=1 𝑘 𝑛𝑚 (2) between 𝒯𝑢 and 𝒯𝑎: 𝑐 = 𝑛′ ෍ 𝑖=",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 126,
+    "page": 18,
+    "text": " 𝑖=1 𝑘 𝑛𝑖 ⋅ ෍ 𝑖=1 𝑘 𝑛𝑖 + 𝑛′ (1) between subtrees in 𝒯𝑎: 𝑐 = ෍ 1≤𝑖<𝑗≤𝑘 𝑛𝑖𝑛𝑗 ෍ 𝑚=1 𝑘 𝑛𝑚 (2) between 𝒯𝑢 and 𝒯𝑎: 𝑐 = 𝑛′ ෍ 𝑖=1 𝑘 𝑛𝑖 ⋅ ෍ 𝑖=1 𝑘 𝑛𝑖 + 𝑛′ (a) leaf node (b) abstract node Figure 8.Decomposition of Dasgupta’s cost for (a) leaf node collapse and (b) abstract node collapse. The Dasgupta’s costs of unmentioned components in the figure obviously remain invariant before and after the collapse. Proof.(1) From Fig 8 (a), ∆c= \u0012na 2 \u0013 (na + 1−n a) | {z } ∆c(withinT a) +n a(na + 1)−n a(n+ 1)| {z } ∆c(betweenuandT a) +n a(n−n a)(n+ 1−n)| {z } ∆c(betweenT a andT \\Ta) = \u0012na 2 \u0013 (32) (2) From Fig 8 (b), ∆c= X 1≤i<j≤k ninj kX m=1 nm +n ′ − kX m=1 nm ! | {z } ∆c(between subtrees inT a) =n ′ X 1≤i<j≤k n",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 127,
+    "page": 18,
+    "text": ") (2) From Fig 8 (b), ∆c= X 1≤i<j≤k ninj kX m=1 nm +n ′ − kX m=1 nm ! | {z } ∆c(between subtrees inT a) =n ′ X 1≤i<j≤k ninj (33) which ends the proof. Corollary B.4.By the Hockey-stick identity (Jones, 1996), the total cost increment from performing n−2 consecutive leaf collapses on a binary branch (resulting inn≥3leaves) is ∆c= n−1X i=2 \u0012i 2 \u0013 = \u0012n 3 \u0013 (34) The total cost increment from collapsingK−k(K > k≥2) identical subtrees onto nodea(resulting inKsubtrees) is ∆c= K−1X κ=k  n′ X 1≤i<j≤κ ninj   =n ′ K−1X κ=k X 1≤i<j≤κ ninj (35) Now we are ready for the following theorem. Theorem 4.3(Non-uniformity preference of Ψ-RAG).Consider a 3-layer equi-depth multifurcating tree T with a perfect",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 128,
+    "page": 18,
+    "text": "orem. Theorem 4.3(Non-uniformity preference of Ψ-RAG).Consider a 3-layer equi-depth multifurcating tree T with a perfectly uniform leaf distribution among its subtrees T1,· · ·,Tk: n1 =n 2 =· · ·=nk =n/k , where k≥3 , n≥3k . A new tree T ′ is constructed by moving one leaf fromT j to another subtreeT i. Then: (1)c(T ′)< c(T); (2) Let T=ψ(T AHC) and T ′ =ψ(T ′ AHC). Denote by ∆c and ∆c′ the increments of Dasgupta’s cost onT and T ′ introduced byψ(·), respectively. Then we havec(T ′)−c(T) = ∆c ′ −∆c. Proof.(1) We visualize the scenario in Figure 9. Letm=n/kand we can know from Lemma B.1 that c(T) =k \u0012m 2 \u0013 m+ \u0012k 2 \u0013 m2n,(36) 19",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 129,
+    "page": 19,
+    "text": "Hierarchical Abstract Tree for Cross-Document Retrieval-Augmented Generation 𝒯𝑖 𝒯𝑗𝒯𝑗 ⋯ ⋯ ⋯ ⋯⋯ ⋯ 𝑚 𝑚 𝑚 𝑚 𝑘 𝑛 ⋯ ⋯⋯ ⋯ 𝑚 𝑚 + 1 𝑚 − 1 𝑚 𝑘 𝑛 𝒯𝑖 𝒯 𝒯′ ⋯ ⋯ 𝒯𝑗 ⋯ ⋯ ⋯⋯ ⋯ 𝑛1 𝑛𝑖 𝑛𝑗 𝑛𝑘 𝑘 𝒯𝑖 𝒯 ⋯ ⋯ ⋯ minor cluster major cluster 𝒯𝑖 𝒯𝑗 ⋯ ⋯ ⋯ 𝑛1 𝑛1 + 1 𝑛𝑗 − 1 𝑛𝑘 𝑘 𝒯′ ⋯ ⋯⋯ Figure 9.An example of a uniform cluster tree (left) and moving a node fromT j to another subtreeT i (right). c(T ′) = (k−2) \u0012m 2 \u0013 m+ \u0012m+ 1 2 \u0013 (m+ 1) + \u0012m−1 2 \u0013 (m−1) + \u0012k−2 2 \u0013 m2n | {z } 0ifk=3 + (m+ 1) (m−1)n+ (k−2)(m+ 1)mn+ (k−2)(m−1)mn(37) So c(T ′)−c(T) = 3m−n−1,(38) which yieldsc(T ′)< c(T)ifk≥3. (2) According to Lemma B.2, we can decompose ψ(·) bottom-up into multiple leaf node collapses and multiple abstract node collapses. From Co",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 130,
+    "page": 19,
+    "text": "mma B.2, we can decompose ψ(·) bottom-up into multiple leaf node collapses and multiple abstract node collapses. From Corollary B.4, the total cost increments introduced byψ(T AHC)andψ(T ′ AHC)are ∆c=k \u0012m 3 \u0013 +m k−1X i=2 \u0012i 2 \u0013 m2 =k \u0012m 3 \u0013 + \u0012k 3 \u0013 m3,(39) ∆c′ = (k−2) \u0012m 3 \u0013 + \u0012m−1 3 \u0013 | {z } 0ifm=3 + \u0012m+ 1 3 \u0013 + \u0012k−2 3 \u0013 m3 | {z } 0ifk≤4 + \u0012k−2 2 \u0013 (m−1)m 2 | {z } 0ifk=3 + (m+ 1)   \u0012k−2 2 \u0013 m2 | {z } 0ifk=3 +(k−2)m(m−1)   (40) So we have ∆c′ −∆c= 3m−n−1 =c(T ′)−c(T)(41) which ends the proof. Remark.Theorem 4.3 proves that while traditional AHC assigns the same Dasgupta’s cost to the two different tree structures (c(T)−∆c=c(T ′)−∆c ′), the collapsing process in Ψ-RAG results in a lo",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 131,
+    "page": 19,
+    "text": "gupta’s cost to the two different tree structures (c(T)−∆c=c(T ′)−∆c ′), the collapsing process in Ψ-RAG results in a lower Dasgupta’s cost for the tree with a non-uniform leaf distribution. This indicates that there is no uniform effect for Ψ-RAG even when pairwise distances between leaf nodes are unsorted. Moreover, as the computation of Dasgupta’s cost can be decomposed into that of each subtree, our conclusions can be generalized to trees withδ >3. B.3. Proof of Theorem 4.4 Theorem 4.4(Distribution adaptability of Ψ-RAG).Consider a 3-layer equi-depth multifurcating tree T with subtrees T1,· · ·,Tk of any size where k≥3 . A subtree of a minor leaf cluster Ti has 2≤n i < nj,∀1≤j̸=i≤k . A n",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 132,
+    "page": 19,
+    "text": " T with subtrees T1,· · ·,Tk of any size where k≥3 . A subtree of a minor leaf cluster Ti has 2≤n i < nj,∀1≤j̸=i≤k . A new tree T ′ is constructed by moving one leaf from some subtreeT j to the minor subtreeT i. Then: (1)c(T ′)≥c(T), andc(T ′) =c(T)iffn j =n i + 1; (2) Let T=ψ(T AHC), T ′ =ψ(T ′ AHC) and ∆c,∆c ′ defined as in Theorem 4.3. Then we have ∆c′ ≥∆c , and ∆c′ = ∆c iff nj =n i + 1. 20",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 133,
+    "page": 20,
+    "text": "Hierarchical Abstract Tree for Cross-Document Retrieval-Augmented Generation 𝒯𝑖 𝒯𝑗𝒯𝑗 ⋯ ⋯ ⋯ ⋯⋯ ⋯ 𝑚 𝑚 𝑚 𝑚 𝑘 𝑛 ⋯ ⋯⋯ ⋯ 𝑚 𝑚 + 1 𝑚 − 1 𝑚 𝑘 𝑛 𝒯𝑖 𝒯 𝒯′ ⋯ ⋯ 𝒯𝑗 ⋯ ⋯ ⋯⋯ ⋯ 𝑛1 𝑛𝑖 𝑛𝑗 𝑛𝑘 𝑘 𝒯𝑖 𝒯 ⋯ ⋯ ⋯ minor cluster major cluster 𝒯𝑖 𝒯𝑗 ⋯ ⋯ ⋯ 𝑛1 𝑛1 + 1 𝑛𝑗 − 1 𝑛𝑘 𝑘 𝒯′ ⋯ ⋯⋯ Figure 10.An example of a tree with a minor subtreeT i (left) and moving a node from a major subtreeT j toT i (right). Proof.(1) We visualize the scenario in Figure 10. So we have c(T) = \u0012ni 2 \u0013 ni + \u0012nj 2 \u0013 nj +n i(n−n i)n+n j(n−n j)n+C,(42) c(T ′) = \u0012ni + 1 2 \u0013 (ni + 1) + \u0012nj −1 2 \u0013 (nj −1) + (n i −1)(n−n i + 1)n+ (n j −1)(n−n j + 1)n+C(43) whereCis a constant that remains invariant to the structure change. So c(T ′)−c(T) = 2n(n j −n i −1) ",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 134,
+    "page": 20,
+    "text": "(n−n j + 1)n+C(43) whereCis a constant that remains invariant to the structure change. So c(T ′)−c(T) = 2n(n j −n i −1) + 3n2 i +n i −3n 2 j + 5nj −2 2 (44) Whenn j =n i + 1,c(T ′)−c(T) = 0. Whenn j =n i +xwherex >1, then c(T ′)−c(T) = 2n(x−1) + 3n2 i +n i −3(n i +x) 2 + 5(ni +x)−2 2 (45) = \u0012 2n−3n i − 3x−2 2 \u0013 (x−1)(46) =  2  ni +n i +x+ X o̸=i,j no   −3n i − 3x−2 2   (x−1)(47) =  ni + 2 X o̸=i,j no + x 2 + 1   (x−1)(48) >0(49) which yieldsc(T ′)> c(T). (2) From Corollary B.4, the total cost increments introduced byψ(T AHC)andψ(T ′ AHC)are ∆c= \u0012ni 3 \u0013 + \u0012nj 3 \u0013 + (n−n i −n j)ninj +C,(50) ∆c′ = \u0012ni + 1 3 \u0013 + \u0012nj −1 3 \u0013 | {z } 0ifn j =3 +(n−n i −n j)(ni + 1)(nj −1) +C(51) whereCis",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 135,
+    "page": 20,
+    "text": " + (n−n i −n j)ninj +C,(50) ∆c′ = \u0012ni + 1 3 \u0013 + \u0012nj −1 3 \u0013 | {z } 0ifn j =3 +(n−n i −n j)(ni + 1)(nj −1) +C(51) whereCis a constant that remains invariant to the structure change. So ∆c′ −∆c= (n j −n i −1) \u0012 n−n i −n j − ni +n j 2 + 1 \u0013 (52) When nj =n i + 1, ∆c′ −∆c= 0 . When nj is larger, nj −n i −1>0 , so we focus on the second part of the right hand side. We consider the minimum case ofn=n i +n j +n j and ∆c′ −∆c= (n j −n i −1) \u0012 nj −n i 2 + 1 \u0013 >0(53) which ends the proof. 21",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 136,
+    "page": 21,
+    "text": "Hierarchical Abstract Tree for Cross-Document Retrieval-Augmented Generation Table 9.Statistics of datasets. Dataset Task type Index scale #Queries #Documents Average #tokens per document NQ Single-hop QA Corpus 1,000 9,633 141.330 PopQA Single-hop QA Corpus 1,000 8,676 136.536 HotpotQA Multi-hop QA Corpus 1,000 9,811 131.602 2Wiki Multi-hop QA Corpus 1,000 6,119 110.436 MuSiQue Multi-hop QA Corpus 1,000 11,656 114.516 MultiHop-RAG Multi-hop QA Corpus 1,000 609 2346.064 NarrativeQA Narrative QA Passage 293 10 62,824.500 ∞-LongBook Narrative QA Passage 100 19 214,711.895 QMSum Summarization Passage 35 35 14,375.543 WCEP Summarization Passage 119 119 9,567.235 Table 10.Statistics of abstract t",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 137,
+    "page": 21,
+    "text": "um Summarization Passage 35 35 14,375.543 WCEP Summarization Passage 119 119 9,567.235 Table 10.Statistics of abstract tree indexes ofΨ-RAG. Dataset #Trees #Average leaf nodes #Average abstract nodes Average tree depth Average compression rate NQ 1 9,633 3,164 6 82.35%/file-alt/ 83.06%ὑ1 PopQA 1 8,676 2,810 5 83.26%/file-alt/ 81.87%ὑ1 HotpotQA 1 9,811 2,635 6 85.98%/file-alt/ 85.85%ὑ1 2Wiki 1 6,119 1,704 5 82.14%/file-alt/ 82.89%ὑ1 MuSiQue 1 11,656 2,938 6 84.79%/file-alt/ 83.09%ὑ1 MultiHop-RAG 1 16,349 4,377 6 78.94%/file-alt/ 78.87%ὑ1 NarrativeQA 10 411 85 3.5 90.71%/file-alt/ 98.25%ὑ1 ∞-LongBook 19 2,446 488 4.2 84.36%/file-alt/ 84.31%ὑ1 QMSum 35 155 41 3.3 82.19%/file-alt/ 82.33%ὑ1 WCEP ",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 138,
+    "page": 21,
+    "text": "-alt/ 98.25%ὑ1 ∞-LongBook 19 2,446 488 4.2 84.36%/file-alt/ 84.31%ὑ1 QMSum 35 155 41 3.3 82.19%/file-alt/ 82.33%ὑ1 WCEP 119 109 33 3.2 76.32%/file-alt/ 76.35%ὑ1 Remark.Theorem 4.4 proves that Ψ-RAG incurs a larger cost to assign a major cluster node to a minor cluster. For a minor class in a corpus with cluster c={u|∃v∈c, d(u, v)< d(u, w)∀w /∈c}, it always form a minor subtree in T following the similarity ranking and iterative merging & collapse processes of Ψ-RAG. In conclusion, Ψ-RAG tends to preserve the size of minor classes in a skewed corpus. As the computation of Dasgupta’s cost can be decomposed into that of each subtree, our conclusions can be generalized to trees withδ >3. C. Deta",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 139,
+    "page": 21,
+    "text": "sgupta’s cost can be decomposed into that of each subtree, our conclusions can be generalized to trees withδ >3. C. Detailed Experimental Setup C.1. Dataset and Index Statistics Statistics of datasets.We provide the statistics of datasets used in our experiments in Table 9. Dataset split.We follow RAPTOR’s document splitting strategy, segmenting documents into chunks of approximate 100 tokens without cutting mid-sentence. Notably, we do not re-split datasets composed of similarly sized paragraphs: NQ, PopQA, HotpotQA, 2Wiki, and MuSiQue. Statistics of abstract trees.We provide the statistics of Ψ-RAG’s abstract tree indexes for each dataset in Table 10. The results show that for corpus-level",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 140,
+    "page": 21,
+    "text": "ide the statistics of Ψ-RAG’s abstract tree indexes for each dataset in Table 10. The results show that for corpus-level datasets, the tree depth of Ψ-RAG stabilizes at 5 to 6 layers. This demonstrates Ψ-RAG’s key advantage of generalization ability: it does not require prior assumptions about data, as it naturally uncovers the underlying semantic hierarchy. C.2. Configurations Indexing setup.We set the maximum token length of the summative abstract for each abstract node to 100, and the maximum number of keywords of the keyword abstract to 20. We set the maximum number of children nodes to 40. Abstract nodes with excessive children will be split in half in the rebalancing process. The keywo",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 141,
+    "page": 21,
+    "text": "children nodes to 40. Abstract nodes with excessive children will be split in half in the rebalancing process. The keyword abstractὑ1is used forΨ-RAG in all non-comparative experiments in this paper, unless otherwise stated. 22",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 142,
+    "page": 22,
+    "text": "Hierarchical Abstract Tree for Cross-Document Retrieval-Augmented Generation Retrieval setup.We mainly follow the multi-step setting of HippoRAG (Jim ´enez Guti´errez et al., 2024) for agentic retrieval. For QA tasks, top-10 retrieved passages from both sparse and dense tree retrievers are integrated and reranked to the final top-5 at each retrieval step. We maintain a maximum score list for retrieved document chunks at each step and take top-5 documents from the list for recall@k evaluation. For multi-hop datasets, we limit the maximum number of retrieval attempts (imax + 1) to be equal to the maximum hop count of user questions: 2 for HotpotQA and 2Wiki, 4 for MuSiQue and MultiHop-RAG. For",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 143,
+    "page": 22,
+    "text": "1) to be equal to the maximum hop count of user questions: 2 for HotpotQA and 2Wiki, 4 for MuSiQue and MultiHop-RAG. For single-hop datasets (NQ and PopQA), though, we allow one extra retrieval attempt for possible query reorganization. For summarization datasets, we perform single retrieval. The k value is determined by the size of documents: top-20 for QMSum and top-15 for WCEP. LLM setup.All experiments are conducted on up to 3 NVIDIA GeForce RTX 4090 GPUs with 48GB VRAM each. We use Ollama5 and Hugging Face as default LLM sources. We follow the majority of default settings of Ollama and Hugging Face models: for example, the context window is fixed to 4096 tokens. We set the decoding temp",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 144,
+    "page": 22,
+    "text": "ngs of Ollama and Hugging Face models: for example, the context window is fixed to 4096 tokens. We set the decoding temperature to 0 and the penalty for generating repetitive content to 1.3 for every LLM. For the summarization task, the maximum LLM response token length is determined by the size of documents: 200 for QMSum and 150 for WCEP. C.3. Instruction Prompts We show LLM prompts used for generating summative abstract, keyword abstract, and R&A agent below. For single-hop and multi-hop QA, we follow existing works and provide a one-shot in-context example. LLM Prompt for/file-altSummative Abstract ========================{System Instruction}======================== As an advanced docume",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 145,
+    "page": 22,
+    "text": "or/file-altSummative Abstract ========================{System Instruction}======================== As an advanced document summarization assistant, your task is to summarize the given list of documents, including as many key details and relationships as possible. (1) Your answer should always start with “Summary:”. NO UNNECESSARY WORDS: Always directly output the summary instead of useless modifiers like ‘Here is a summary of the given list ...’. (2) Be faithful to the original documents. Unnecessary paraphrasing and adding content not mentioned in the original documents are NOT allowed. (3) Your summary should be NO MORE THAN {summary max length} WORDS. Keep in mind that a longer summary is",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 146,
+    "page": 22,
+    "text": "e NOT allowed. (3) Your summary should be NO MORE THAN {summary max length} WORDS. Keep in mind that a longer summary is not always better. An in-context example is provided below. ========================{In-context example}======================== /userUser input: Hotel Tallcorn The Hotel Tallcorn is located in Marshalltown, Iowa... The Oberoi Group The Oberoi Group is a hotel company with its head office in Delhi... Hotel Bond Hotel Bond is a historic hotel, built in two stages in 1913 and 1921... Mohan Singh Oberoi Rai Bahadur Mohan Singh Oberoi (15 August 1898 – 3 May 2002)... Ritz-Carlton Jakarta The Ritz-Carlton Jakarta is a hotel and skyscraper in Jakarta... ♂robotAssistant response:",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 147,
+    "page": 22,
+    "text": "2002)... Ritz-Carlton Jakarta The Ritz-Carlton Jakarta is a hotel and skyscraper in Jakarta... ♂robotAssistant response: The Hotel Tallcorn in Marshalltown, Iowa, built in 1928, is now an apartment building. It was part of one of the second-largest hotel sales in U.S. history in 1956. Hotel Bond is a historic hotel in Hartford, Connecticut, built in two stages. After facing competition, it went through multiple ownership changes and bankruptcies. It is now a Homewood Suites by Hilton, with its ballroom having reopened in 2001. The Oberoi Group, founded in 1934, is a luxury hotel company based in Delhi. It owns and operates over 30 hotels and two cruise ships. It was founded by Mohan Singh Ob",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 148,
+    "page": 22,
+    "text": "hotel company based in Delhi. It owns and operates over 30 hotels and two cruise ships. It was founded by Mohan Singh Oberoi, who started India’s second-largest hotel company. The Ritz-Carlton Jakarta is a skyscraper hotel in Indonesia, opened in 2005. It consists of two towers, one for the hotel and one for apartments, and is located near the JW Marriott Hotel. 5https://ollama.com/ 23",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 149,
+    "page": 23,
+    "text": "Hierarchical Abstract Tree for Cross-Document Retrieval-Augmented Generation LLM Prompt forὑ1Keyword Abstract ========================{System Instruction}======================== As an advanced document summarization assistant, your task is to summarize the given list of text paragraphs into multiple key phrases or words. These key phrases include: · Key phrases that overview the types of information covered in the text; · Key phrases that reflect the common themes of these paragraphs; · Key phrases that distinguish the specific content of each paragraph. Requirements: (1) Generate key phrases mentioned above in order. All key phrases should be strictly formatted as ONE line of text, separat",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 150,
+    "page": 23,
+    "text": "Generate key phrases mentioned above in order. All key phrases should be strictly formatted as ONE line of text, separated by commas, equivalent to the output format of Python code “‘,’.join(list of keywords)”. (2) Different key phrases should be distinct from one another. (3) NO UNNECESSARY WORDS: Always output the direct key phrase list instead of useless modifiers like ‘Here are the key phrases according to the documents: ...’ or ‘Information key phrases: ... Theme key phrases: ...’. (4) The number of key phrases should be NO MORE THAN{max num keywords}. An in-context example is provided below. ========================{In-context example}======================== /userUser input: Hotel Tal",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 151,
+    "page": 23,
+    "text": "ample is provided below. ========================{In-context example}======================== /userUser input: Hotel Tallcorn The Hotel Tallcorn is located in Marshalltown, Iowa... The Oberoi Group The Oberoi Group is a hotel company with its head office in Delhi... Hotel Bond Hotel Bond is a historic hotel, built in two stages in 1913 and 1921... Mohan Singh Oberoi Rai Bahadur Mohan Singh Oberoi (15 August 1898 – 3 May 2002)... Ritz-Carlton Jakarta The Ritz-Carlton Jakarta is a hotel and skyscraper in Jakarta... ♂robotAssistant response: historic hotels,hotel companies,bankruptcy and renovation,brand operations,Indian hospitality industry,Indonesia skyscraper,hotel locations,hotel building ",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 152,
+    "page": 23,
+    "text": "kruptcy and renovation,brand operations,Indian hospitality industry,Indonesia skyscraper,hotel locations,hotel building time,hotel architecture,hotel founders,hotel ownership history,Marshalltown Iowa,Hotel Tallcorn,Eppley Hotel Company,Sheraton sale,The Oberoi Group,Mohan Singh Oberoi,Hotel Bond,Hartford Connecticut,Bond Ballroom,Ritz- Carlton Jakarta LLM Prompt for R&A Agent in single-hop and multi-hop QA ========================{System Instruction}======================== As an advanced reading comprehension and information retrieval agent, your task is to answer the user question by retrieving documents and multi-step reasoning, following the instructions below: (1) Your response starts ",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 153,
+    "page": 23,
+    "text": "r question by retrieving documents and multi-step reasoning, following the instructions below: (1) Your response starts after “Thought: ”, where you will methodically break down the reasoning process, illustrating how you arrive at conclusions step-by-step. If you believe you have found the answer, conclude with “Answer:<answer>” to present a concise, definitive response. (2) You can request for retrieving supporting documents from a relevant database a maximum of{max retrieval time} times. Some retrieved documents are provided the first time. When the question involves content you do not understand, or current documents do not provide enough information, request retrieval by responding with",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 154,
+    "page": 23,
+    "text": "tent you do not understand, or current documents do not provide enough information, request retrieval by responding with “Retrieve: <retrieve query>”, where <retrieve query> is a sub-question derived from the user question, which you believe must be resolved to answer the user question. (3) The retrieval results will be provided in the format “Retrieved documents: ...”, and you should continue your reasoning based on the user question, your previous reasoning steps, and all retrieved documents. Obtain your answer with as few retrieval attempts as possible, which means you need to make your <retrieve query> as precise as possible. If newly retrieved documents do not help, try reorganizing you",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 155,
+    "page": 23,
+    "text": "eed to make your <retrieve query> as precise as possible. If newly retrieved documents do not help, try reorganizing your <retrieve query>. If you run out of retrieval attempts and still cannot answer the question, answer with “Not mentioned” only. Do NOT provide additional uncertain information. (4) NO UNNECESSARY WORDS: After your reasoning, you MUST end your response with “Answer: <answer>” or “Re- trieve: <retrieve query>” in a new line. <answer> is in most cases a word or a phrase. Avoid ambiguous words like “approximately”. (5) Your “Thought: ” response should be NO MORE THAN{thought max length}WORDS. An in-context example is provided below. 24",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 156,
+    "page": 24,
+    "text": "Hierarchical Abstract Tree for Cross-Document Retrieval-Augmented Generation ========================{In-context example}======================== /userUser input: Retrieved documents: Hotel Tallcorn The Hotel Tallcorn is located in Marshalltown, Iowa... Hotel Bond Hotel Bond is a historic hotel, built in two stages in 1913 and 1921... Ritz-Carlton Jakarta The Ritz-Carlton Jakarta is a hotel and skyscraper in Jakarta... User question: The Oberoi family is part of a hotel company that has a head office in what city? Retrieval time remaining:3 Thought: ♂robotAssistant response: According to the user question, I need to first figure out the hotel company that the Oberoi family is part of. Howeve",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 157,
+    "page": 24,
+    "text": ": According to the user question, I need to first figure out the hotel company that the Oberoi family is part of. However, the retrieved documents do not include any details regarding the Oberoi family. Retrieve: Which hotel company is the Oberoi family part of? /userUser input: Retrieved documents: The Oberoi Group The Oberoi Group is a hotel company with its head office in Delhi... Mohan Singh Oberoi Rai Bahadur Mohan Singh Oberoi (15 August 1898 – 3 May 2002)... User question: The Oberoi family is part of a hotel company that has a head office in what city? Retrieval time remaining:2 Thought: ♂robotAssistant response: According to “Mohan Singh Oberoi”, Mohan Singh Oberoi is the founder an",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 158,
+    "page": 24,
+    "text": "e remaining:2 Thought: ♂robotAssistant response: According to “Mohan Singh Oberoi”, Mohan Singh Oberoi is the founder and chairman of Oberoi Hotels & Resorts. From “The Oberoi Group”, Oberoi Hotels & Resorts is a brand and its company, The Oberoi Group, is a hotel company with its head office in Delhi. Answer: Delhi LLM Prompt for R&A Agent in summarization ========================{System Instruction}======================== As an advanced reading comprehension and information retrieval agent, your task is to answer summative user questions based on retrieved documents. For each document, an [ID] is prepended to indicate the relative order in the document corpus. These documents provide a co",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 159,
+    "page": 24,
+    "text": " each document, an [ID] is prepended to indicate the relative order in the document corpus. These documents provide a condensed version of the original long corpus to help you with summative tasks. Requirements: (1) Organize the documents to form a logically clear summary of the main content or plot of the original long corpus. (2) Your answer should be comprehensive and coherent. Your summative answer should be an independent paragraph, enabling the user to comprehend the content or plot of the original corpus. Do NOT include additional uncertain or made-up information in your answer. (3) Your answer should be NO MORE THAN{response max length}WORDS. D. Supplemental Experiments D.1. Case Stu",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 160,
+    "page": 24,
+    "text": "your answer. (3) Your answer should be NO MORE THAN{response max length}WORDS. D. Supplemental Experiments D.1. Case Study We present a multi-hop example from MuSiQue in Table 11 to intuitively illustrate howΨ-RAG performs multi-granular agentic retrieval on the abstract tree. The question, “Who is the wife of the man who produced the documentary of the pop star who influenced Beyonc´e?” requires up to 3 hops to answer. The example shows that the keywords retrieved by Ψ-RAG ὑ1at the first layer are relatively coarse, covering broad themes such as music, sports, and movies. With the search going deeper into the tree, the keywords become finer-grained. Consequently, two semantically related re",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 161,
+    "page": 24,
+    "text": "With the search going deeper into the tree, the keywords become finer-grained. Consequently, two semantically related retrieved chunks tell that the required “man who produced the documentary” is David Gest. However, due to the structural isolation, we still do not know who is David Gest’s wife, so the R&A agent calls for a second retrieval attempt. As the second question lacks sufficient context, the coarse abstraction in the upper tree layers confuses 25",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 162,
+    "page": 25,
+    "text": "Hierarchical Abstract Tree for Cross-Document Retrieval-Augmented Generation Table 11.Retrieved documents and agent response of a multi-hop question example. “ ✓” and “ /times” indicate supporting chunks and irrelevant chunks, respectively. Relevant tokens matched by BM25 arehighlighted. QueryWho is the wife of the man who produced the documentary of the pop star who influenced Beyonc ´e? Ψ-RAGὑ1(1st attempt: original query) Ψ-RAGὑ1(2nd attempt:Who is the spouse of David Gest?) BM25 /times1: “The Mistress” features... a marriedman, whose wife was played by... /times2: Pizza Man is a 1991 comedy filmstarring Bill Maher... /times3: Real Life is a 1979 American comedy filmstarring Albert Brooks",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 163,
+    "page": 25,
+    "text": " Man is a 1991 comedy filmstarring Bill Maher... /times3: Real Life is a 1979 American comedy filmstarring Albert Brooks... /times4: No Escape is a 1936 British thriller film directed by... ✓ 5: Michael Jackson: The Life of an Icon is a documentary film about pop singer... produced by his friend,David Gest... ✓1: Liza and David... featuringLiza Minnelliand her then-husband, David Gest. ✓2: Michael Jackson: The Life of an Icon... produced by his friend, David Gest... /times3: Dave Fennoy Fennoy in Phoenix, ArizonaDavid Henderson Fennoy... /times4: Chileab... was the second son ofDavid, King of Israel... /times5: Random Hearts is a 1999 American romantic drama film... their spouses were having",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 164,
+    "page": 25,
+    "text": "on ofDavid, King of Israel... /times5: Random Hearts is a 1999 American romantic drama film... their spouses were having an affair... 1st layer 1: Beyonc´e’s music career, NBA players, American football, ... 2: film characters, biographies of actors, musical fantasy comedies, ... 3: DC Comics characters, superhero films, Marvel and DC comics, ... 1: DC Comics characters, superhero films, Marvel and DC comics, ... 2: cricket tournaments, FIFA Confederations Cup, ICC Champions Trophy, ... 3: film characters, biographies of actors, musical fantasy comedies, ... Last abstract layer 1: Beyonc´e’s music career, R&B and pop genres, female empowerment, ... 2: show business families, celebrity siblin",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 165,
+    "page": 25,
+    "text": "ayer 1: Beyonc´e’s music career, R&B and pop genres, female empowerment, ... 2: show business families, celebrity siblings, marriages and spouses, ... 3: Beyonc´e’s solo career, music awards, Billboard charts, ... 1: Swedish personalities, biographical accounts, historical figures, ... 2: Game of Thrones, Justice League, Aquaman, ... 3: European royalty, medieval history, noble families, ... Leaf layer /times1: Beyonc´e’s work has influenced numerous artists... /times2: On March 30, 2015, it was announced that Beyonc´e is a co-owner... ✓3: Beyonc ´e namesMichael Jacksonas her major musical influence... ✓4: Michael Jackson: The Life of an Icon is a documentary film... /times5: Beyonc´e Gisell",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 166,
+    "page": 25,
+    "text": "er major musical influence... ✓4: Michael Jackson: The Life of an Icon is a documentary film... /times5: Beyonc´e Giselle Knowles-Carter (/bi:’jOnseI/ bee-YON-say)... /times1: Dave Fennoy Fennoy in Phoenix, Arizona... /times2: Gal Gadot - Varsano (Hebrew: ... /times3: Gal Gadot - Varsano (Hebrew: ... /times4: Gal Gadot - Varsano (Hebrew: ... /times5: Catharina Wallenstedt was the daughter of Bishop Laurentius... Final retrieved chunks ✓1: Michael Jackson: The Life of an Icon... [score:0.406] /times2: Nine Days that Changed the World is a 2010 documentary... [score:0.101] ✓ 3: Beyonc´e namesMichael Jacksonas her major musical influence... [score: 0.071] /times4: Beyonc´e’s work has influenced",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 167,
+    "page": 25,
+    "text": "3: Beyonc´e namesMichael Jacksonas her major musical influence... [score: 0.071] /times4: Beyonc´e’s work has influenced numerous artists... [score:0.064] /times5: Following the disbandment of Destiny´s Child... [score:0.038] ✓1: Liza and David... featuringLiza Minnelliand her then-husband, David Gest. [score:0.980] ✓2: Michael Jackson: The Life of an Icon... [score:0.201] /times3: Gal Gadot - Varsano (Hebrew: ... [score:0.029] /times4: Gal Gadot - Varsano (Hebrew: ... [score:0.026] /times5: Gal Gadot - Varsano (Hebrew: ... [score:0.020] Agent response According to “Michael Jackson: The Life of an Icon”, David Gest is the friend and producer of the documentary film about pop singer Michael J",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 168,
+    "page": 25,
+    "text": " Jackson: The Life of an Icon”, David Gest is the friend and producer of the documentary film about pop singer Michael Jackson... I need more information on who David Gest’s wife was at that time or if he had a wife. <retrieve>Who is the spouse of David Gest? According to “Michael Jackson: The Life of an Icon”... Lastly, I found that Liza Minnelli was the wife of David Gest at some point in time. <answer>Liza Minnelli✓ Table 12.An example of minor class retrieval on MultiHop-RAG (S[:50]+E[:5]). The top-1 summative abstract in each layer is listed. Red and purple text relate to the major class “Sports” and the minor class “Entertainment”, respectively. QueryWhat was the name of the tunnel whe",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 169,
+    "page": 25,
+    "text": " to the major class “Sports” and the minor class “Entertainment”, respectively. QueryWhat was the name of the tunnel where the fatal car crash occurred in The Crown? RAPTOR (Sarthi et al., 2024) Ψ-RAG/file-alt 1st layer Various sports teams face outcomes: Inter Miami eliminated, Italy and Australia in Davis Cup final, Rangers lead Diamondbacks 3-1, Lions beat Packers, 49ers defeat Cowboys, Vikings lose to Broncos and Bears, amidst other results and controversies including Mattel’s inaccurate Cherokee Barbie. The Crown’s final season covers Prince Charles and Camilla, Princess Diana, and Dodi Fayed. Diana’s death and her sons’ reactions are depicted. Separate stories include Jada Pinkett Smit",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 170,
+    "page": 25,
+    "text": "ss Diana, and Dodi Fayed. Diana’s death and her sons’ reactions are depicted. Separate stories include Jada Pinkett Smith and Will Smith’s marriage, Mattel’s Barbie honoring Wilma Mankiller, and Dodi Fayed’s past engagement to Kelly Fisher. 2nd layer Inter Miami loses 1-0 to FC Cincinnati, eliminating them from MLS playoff contention, despite Lionel Messi’s 35-minute appearance off the bench, as Alvaro Barreal scores late, while other teams like Manchester United struggle in Europe with defensive issues and Chelsea’s Reece James faces an abusive conduct charge. Season six focuses on Prince Charles and Camilla, Princess Diana and Dodi Fayed. After Diana’s 1997 death, William went missing at B",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 171,
+    "page": 25,
+    "text": "ocuses on Prince Charles and Camilla, Princess Diana and Dodi Fayed. After Diana’s 1997 death, William went missing at Balmoral, returning 14 hours later. Before her death, Diana told William and Harry not to believe papers and planned life changes, but a planned meeting never occurred due to her fatal car crash in Paris. Leaf layer So, our mistakes can never happen in the Champions League, you get punished for it, so we have to learn from that ” However, Aston Villa legend Gabby Agbonlahor insists Onana needs to take a significant chunk of the blame for United’s collapse on Wednesday night “I feel sorry for Onana,” Agbonlahor told talkSPORT “There’s a clip of him throwing his gloves to the ",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 172,
+    "page": 25,
+    "text": "n Wednesday night “I feel sorry for Onana,” Agbonlahor told talkSPORT “There’s a clip of him throwing his gloves to the ground after the game He’s angry with himself In both the series and in real-life, Diana and Dodi - along with their chauffeur, Henri Paul - were killed on 31 August 1997 when their Mercedes-Benz was pursued by paparazzi and crashed in thePont de l’Alma tunnelin Paris The mother of two was 36 years old The fatal car crash was recreated in the very first scene of season six Agent response The retrieved documents once again do not mention anything about a tunnel or a fatal car crash from “The Crown”. They are still discussing football, specifically Aston Villa and Manchester ",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 173,
+    "page": 25,
+    "text": "nnel or a fatal car crash from “The Crown”. They are still discussing football, specifically Aston Villa and Manchester United. Since I have run out of retrieval attempts and the provided information does not answer the question. <answer>Not mentioned/times To answer this user question, I need to identify the location and details regarding a specific event depicted in “The Crown”. According to the retrieved document, Diana, Dodi, their chauffeur Henri Paul were involved in a fatal car crash. This incident occurred when they were pursued by paparazzi while driving through Paris. Their Mercedes-Benz crashed inside the Pont de l’Alma tunnel on 31 August 1997. <answer>Pont de l’Alma✓ 26",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 174,
+    "page": 26,
+    "text": "Hierarchical Abstract Tree for Cross-Document Retrieval-Augmented Generation the retriever, leading it to irrelevant chunks. In contrast, sparse retrieval can provide straightforward facts about David Gest by simply searching for documents with the keyword. As a result, the retrieved chunk leads to the final answer “Liza Minnelli”. This demonstrates the importance of synergy between Ψ-RAG’s hierarchical tree index and the multi-granular hybrid retriever, the key to its effectiveness. D.2. Analyses on Hierarchical Abstract Tree Case study: retrieval on skewed data.To further demonstrate the impact of the uniform effect and distribution adaptability, we conduct a case study based on the visual",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 175,
+    "page": 26,
+    "text": " demonstrate the impact of the uniform effect and distribution adaptability, we conduct a case study based on the visualization study in Section 4.2. We compare the agent response processing a minor-class question on both tree indexes of RAPTOR and Ψ-RAG. From Table 12, the 1st layer abstract nodes of RAPTOR are confused because of the uniform effect, with most of the contents related to the major class “Sports”. This significantly interrupts the retriever which selects a major class abstract node in the 2nd layer. On the contrary, Ψ-RAG’s minor abstract node at the 1st layer clearly points to the relevant topic “The Crown”. This assists the retriever in finding the correct chunk. Table 13.C",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 176,
+    "page": 26,
+    "text": "er clearly points to the relevant topic “The Crown”. This assists the retriever in finding the correct chunk. Table 13.Comparative results of the indexes. “SR”, “R&A”, and “Q3R” refer to the sparse retriever, the R&A agent, and the reranker, specifically. Index Single retrieval time (s) F1 (%) MuSiQue Flat33.39 30.50 GMM0.16 17.17 HAT0.1518.62(↑1.45) GMM + SR + R&A + Q3R1.17 47.26 HAT + SR + R&A + Q3R1.1248.90(↑1.64) MultiHop-RAG Flat62.21 42.44 GMM0.17 35.81 HAT0.1636.30(↑0.49) GMM + SR + R&A + Q3R0.66 51.32 HAT + SR + R&A + Q3R0.6256.23(↑4.91) 4,096 8,192 16,384context window size No rebalancing: 45.82 Maximum #children per abstract node F1 (%) Figure 11.Sensitivity of Ψ-RAG to the maximum",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 177,
+    "page": 26,
+    "text": "ndow size No rebalancing: 45.82 Maximum #children per abstract node F1 (%) Figure 11.Sensitivity of Ψ-RAG to the maximum number of children per abstract node on MuSiQue. Quantitative study on tree indexes.We conduct a quantitative comparison between the hierarchical abstract tree (HAT) of Ψ-RAG /file-altand (1) a flat index, which performs brute-force sequential search on all document chunks with O(n) time; (2) the GMM-based cluster tree of RAPTOR (Sarthi et al., 2024), both without and with the proposed multi-granular agentic retriever modules. From Table 13, we make the following observations: (1)Flat dense retrieval is much slower than tree retrieval.Although dense retrieval on a flat ind",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 178,
+    "page": 26,
+    "text": "ollowing observations: (1)Flat dense retrieval is much slower than tree retrieval.Although dense retrieval on a flat index serves as a performance upper bound for tree indexes, its linear time complexity incurs at least ∼100× higher runtime than the logarithmic retrieval of tree indexes. (2)HAT outperforms the GMM tree both with or without the agentic retriever modules.The performance increase points to the minor class distribution in the data, which characterizes the contribution of our tree index to alleviating poor distribution adaptability. Effect of rebalancing.We have set the maximum number of children per abstract node for the abstract tree. This keeps the total abstract length within",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 179,
+    "page": 26,
+    "text": " set the maximum number of children per abstract node for the abstract tree. This keeps the total abstract length within the context window of the abstraction agent. Figure 11 shows the sensitivity of Ψ-RAG to the rebalancing process after tree construction, which lead to three observations. (1) Rebalancing without excessive splitting helps build a better tree structure with higher performance. (2) Splitting an abstract node too many times may lead to relevant node missing during top-k dense vector matching: setting maximum #children to 10 makes the F1 lower than that without rebalancing. (3) When the abstracts become too long (8k–16k tokens), their semantics become more vague which also red",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 180,
+    "page": 26,
+    "text": "ut rebalancing. (3) When the abstracts become too long (8k–16k tokens), their semantics become more vague which also reduces the accuracy. D.3. Analyses on Multi-granular Agentic Retriever Maximum number of retrieval attempts.We evaluate how the efficiency and performance of the R&A agent vary with the maximum number of iterative retrieval attempts (imax + 1), as shown in Figure 12. The results indicate that on multi-hop datasets, the first extra retriever call yields the greatest performance gain, while subsequent attempts contribute minimal or even negative improvement. Each retrieval attempt introduces a relatively constant time overhead, and longer reasoning 27",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 181,
+    "page": 27,
+    "text": "Hierarchical Abstract Tree for Cross-Document Retrieval-Augmented Generation HotpotQA 2Wiki MuSiQue MultiHop-RAG Maximum retrieval attemptsMaximum retrieval attemptsMaximum retrieval attempts Maximum retrieval attempts Maximum retrieval attemptsMaximum retrieval attempts Maximum retrieval attempts Maximum retrieval attempts Figure 12.Retrieval and QA performance in Recall@5 (R@5%) and F1 (%), and average processing time for each query (s) under concurrent execution,w.r.t.the maximum number of retrieval attempts. False Rate (%) Not Mentioned Rate (%) False Rate Not Mentioned Rate Ψ-RAG Ψ-RAG NQ PopQA MuSiQueHotpotQA 2Wiki MultiHop-RAG NarrativeQA ∞-LongBook Figure 13.False Rate and Not Mentio",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 182,
+    "page": 27,
+    "text": " Rate Ψ-RAG Ψ-RAG NQ PopQA MuSiQueHotpotQA 2Wiki MultiHop-RAG NarrativeQA ∞-LongBook Figure 13.False Rate and Not Mentioned Rate ofΨ-RAG on different datasets. chains tend to introduce unnecessary noise (Wu et al., 2025). Therefore, it is crucial to strike a balance between the cost of retrieval iterations and the performance gains across different application scenarios. D.4. Failure Analysis We analyze the failure cases of Ψ-RAG by measuring the False Rate (rate of incorrect answers) and Not Mentioned Rate (rate of retrieval failures). An incorrect answer is defined as sharing no overlapping tokens with the ground truth. Figure 13 reveals the following key patterns: (1)Retrieval failures st",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 183,
+    "page": 27,
+    "text": "ring no overlapping tokens with the ground truth. Figure 13 reveals the following key patterns: (1)Retrieval failures stem from multiple factors.Index scale is a primary factor: the Not Mentioned Rate for ∞- LongBook is significantly higher than that for NarrativeQA, which has an index only 30% the size on average. This is because upper-level abstracts in a larger search space are coarser and introduce more noise. Another factor is query complexity: datasets with higher maximum hop counts (MuSiQue with 4 hops) exhibit higher Not Mentioned Rates than those with fewer hops (HotpotQA and 2Wiki with 2 hops). Although we increase the maximum retrieval attempts for complex questions, we observe th",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 184,
+    "page": 27,
+    "text": "otpotQA and 2Wiki with 2 hops). Although we increase the maximum retrieval attempts for complex questions, we observe that if the initial retrieval for a reorganized query fails, subsequent retrieval attempts are also highly likely to fail. This is because the reorganized query often does not shift the high-level semantic focus, causing the tree retriever to revisit the same abstract nodes. Meanwhile, the high-frequency entities in the reorganized query lead the sparse retriever to return many noisy chunks. As shown in Section D.1, BM25 retrieves many irrelevant chunks with “David” that are unrelated to the target “David Gest”. 28",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 185,
+    "page": 28,
+    "text": "Hierarchical Abstract Tree for Cross-Document Retrieval-Augmented Generation (2)The False Rate consistently exceeds the Not Mentioned Rate.This occurs on most datasets excluding MultiHop-RAG (with unanswerable negative samples). A manual analysis of 50 failure cases from L3-70B on MuSiQue identifies the following causes: (i) LLM misguidance or guesses resulting from incomplete retrieval (29 cases); (ii) logical errors in agentic reasoning (8 cases); (iii) LLM hallucination (6 cases); (iv) granularity mismatch between the answer and the ground truth (7 cases). Therefore, the primary cause of a higher false rate is missing key document chunks in retrieval. E. Real-World Extensions E.1. Approxi",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 186,
+    "page": 28,
+    "text": " primary cause of a higher false rate is missing key document chunks in retrieval. E. Real-World Extensions E.1. Approximate Nearest Neighbor Search for Efficient Indexing We extend Ψ-RAG with two efficient techniques for very large corpora with 10M+ and even 100M+ tokens. They include: • Bucketing: following the inverted-file index in Faiss (Douze et al., 2025), we first partition a large corpus into multiple buckets using a fast recursive spherical k-means. We then build a tree inside each bucket and finally merge them at the highest layer. Assuming b≪n buckets of balanced size, bucketing reduces the average indexing time complexity from O(n2)toO(n 2/b)and space complexity fromO(n 2)toO(n ",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 187,
+    "page": 28,
+    "text": "d size, bucketing reduces the average indexing time complexity from O(n2)toO(n 2/b)and space complexity fromO(n 2)toO(n 2/b2). • ANN search with HNSW(Malkov & Yashunin, 2018): we build an HNSW graph over all chunk embeddings and use the top-k graph neighbor pairs of each chunk, which are then ranked to build the tree. This reduces the average time complexity of similarity ranking fromO(n 2 logn)toO(knlogkn)and space complexity fromO(n 2)toO(kn). We evaluate the efficiency of the two extensions on two large subsets from Wiki18 (∼3B tokens) in FlashRAG (Jin et al., 2025c): Wiki18-6M (6.1M tokens, ∼42k chunks) and Wiki18-50M (50.8M tokens, ∼350k chunks). The time and memory costs are listed in ",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 188,
+    "page": 28,
+    "text": "ki18-6M (6.1M tokens, ∼42k chunks) and Wiki18-50M (50.8M tokens, ∼350k chunks). The time and memory costs are listed in Table 14. It shows that HNSW can generate sorted document pairs for a corpus of 50M tokens with less than 1.5 GB of storage. Combined with bucketing, tree indexing can be completed with MB-level memory usage and at less than 1% of the original time cost. Therefore, LLM-based abstraction becomes the primary efficiency bottleneck for scaling the framework to industrial corpora. Exploring efficient alternatives to LLM-based abstraction will be a key direction for our future work. Table 14.Time and memory comparison of Ψ-RAG’s extensions on large-scale Wiki18 subsets. Embedding",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 189,
+    "page": 28,
+    "text": " for our future work. Table 14.Time and memory comparison of Ψ-RAG’s extensions on large-scale Wiki18 subsets. Embedding dimension is set to 1,024. Experiments are conducted on 8 CPU cores (Wiki18-6M) / 64 CPU cores (Wiki18-50M) and 256GB Memory. Data Wiki18-6M Wiki18-50M Method VanillaΨ-RAG + HNSW + Bucketing (b= 4) + HNSW + HNSW + Bucketing (b= 63) + HNSW Embedding time (s)1,229 10,208 Similarity ranking time (s)304.84 55.99(5.44×)0.89(342.5×) 168.027.87(21.35×) Similarity matrix memory13.16GB 10.55MB(1,277×)2.45MB(5,483×) 88.17MB2.15MB(41.01×) Similarity ranking memory65.81GB 656.7MB(102.6×)37.89MB(1,778×) 1.34GB34.10MB(40.24×) Tree indexing time (s)15,996 13,957(1.15×)848(18.86×) ∼280,00",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 190,
+    "page": 28,
+    "text": ".81GB 656.7MB(102.6×)37.89MB(1,778×) 1.34GB34.10MB(40.24×) Tree indexing time (s)15,996 13,957(1.15×)848(18.86×) ∼280,0002,261(∼124×) Abstraction time (s)∼205,000∼200,000∼89,400 ∼1,800,000∼1,400,000 E.2. Query Hop Discriminator Our evaluation utilizes the maximum hop count of each dataset for the maximum number of iterative retrieval timeimax. Table 15.Multi-hop QA results of Ψ- RAG with the query hop discriminator. Dataset R@5 (%) F1 (%) HotpotQA95.05 74.27 MuSiQue72.68 46.63 This limits the applicability in real-world datasets with diverse user queries. For practical settings without prior maximum hop count, we implement a lightweight query hop discriminator Q:q7→i max using a 2-layer MLP ",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 191,
+    "page": 28,
+    "text": "ings without prior maximum hop count, we implement a lightweight query hop discriminator Q:q7→i max using a 2-layer MLP trained on questions with 1 to 4 hops. It predicts the hops of each user query before retrieval to automatically decide the maximum retrieval time for the R&A agent with very small latency. Table 15 shows the QA results with Q on some multi-hop datasets6. Results indicate that the query hop discriminator preserves strong effectiveness of Ψ-RAG without the prior maximum hop count. 6We trainQwith user questions from datasets other than the indexed corpus: NQ, 2Wiki, MultiHop-RAG without negative samples, and MuSiQue for indexing HotpotQA (HotpotQA for indexing MuSiQue). The l",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  },
+  {
+    "chunk_id": 192,
+    "page": 28,
+    "text": ", 2Wiki, MultiHop-RAG without negative samples, and MuSiQue for indexing HotpotQA (HotpotQA for indexing MuSiQue). The lengths of decomposed sub-query lists or the number of evidence passages serve as labels. 29",
+    "chunk_mode": "character_overlap",
+    "overlap": 120
+  }
+]
