@@ -43,24 +43,10 @@ def extract_pages(pdf_bytes: bytes) -> list[dict]:
     text is empty.  No hard page limit.  Uses ``strict=False`` so mildly
     malformed PDFs (common with web uploads) are tolerated.
     """
-    # Quick sanity check: truncated or non-PDF bytes
-    if not pdf_bytes:
-        raise ValueError("Uploaded file is empty")
-    if len(pdf_bytes) < 5 or pdf_bytes[:5] != b"%PDF-":
-        raise ValueError(
-            f"Not a valid PDF (missing %PDF- header; got {pdf_bytes[:20]!r}…). "
-            "The file may have been truncated during upload — "
-            "check the deployment platform's request body size limit."
-        )
-
     try:
         reader = PdfReader(BytesIO(pdf_bytes), strict=False)
     except Exception as exc:
-        raise ValueError(
-            f"Failed to parse PDF ({len(pdf_bytes)} bytes received): {exc}. "
-            "If this works locally but not in deployment, "
-            "the request body may have been truncated by a proxy size limit."
-        ) from exc
+        raise ValueError(f"Failed to parse PDF: {exc}") from exc
 
     pages: list[dict] = []
     for page_number, page in enumerate(reader.pages, start=1):

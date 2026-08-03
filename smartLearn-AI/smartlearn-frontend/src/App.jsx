@@ -31,8 +31,8 @@ export default function App() {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState(null);
 
-  // Stable upload chatId — generated once and reused until overridden
-  const [uploadChatId] = useState(() => freshChatId());
+  // Always generate a fresh chatId for new uploads
+  const uploadChatId = freshChatId();
 
   // On mount, check if backend has restarted. If so, clear all local state.
   useEffect(() => {

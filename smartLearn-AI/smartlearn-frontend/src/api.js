@@ -12,12 +12,12 @@ export function setChatContext(chatId) {
 }
 
 export async function uploadPdf(file, chatId) {
+  const params = new URLSearchParams({ chat_id: chatId });
   const formData = new FormData();
   formData.append('file', file);
 
-  const res = await fetch(`${API_BASE}/upload`, {
+  const res = await fetch(`${API_BASE}/upload?${params}`, {
     method: 'POST',
-    headers: { 'X-Chat-Id': chatId },
     body: formData,
   });
 

@@ -9,7 +9,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, Header, Query, UploadFile, File, HTTPException
+from fastapi import FastAPI, Query, UploadFile, File, HTTPException
 from fastapi.responses import StreamingResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -128,12 +128,11 @@ async def health():
 
 @app.post("/upload")
 async def upload_pdf(
-    x_chat_id: str = Header(..., alias="X-Chat-Id"),
+    chat_id: str = Query(...),
     file: UploadFile = File(...),
 ):
-    chat_id = x_chat_id.strip()
     # 1. Validate chat_id
-    if not chat_id:
+    if not chat_id or not chat_id.strip():
         raise HTTPException(status_code=400, detail="chat_id must not be empty")
 
     # 2. Read file bytes
@@ -163,7 +162,7 @@ async def upload_pdf(
     # 6. Build the Day-3 RAG record (saves PDF + builds FAISS index)
     try:
         document = prepare_rag_chat_record(
-            chat_id=chat_id,
+            chat_id=chat_id.strip(),
             filename=original_filename,
             pdf_bytes=contents,
             upload_root=str(UPLOAD_DIR),
@@ -188,7 +187,7 @@ async def upload_pdf(
         )
 
     # 7. Store the RAG-ready record
-    documents[chat_id] = document
+    documents[chat_id.strip()] = document
 
     # 8. Return the same visible Day-2 JSON shape
     pages = document["pages"]
