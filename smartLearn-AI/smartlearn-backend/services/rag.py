@@ -40,9 +40,13 @@ def extract_pages(pdf_bytes: bytes) -> list[dict]:
     """Read a PDF from raw bytes page by page, keeping original page numbers.
 
     Cleans each page with :func:`clean_text` and skips pages whose cleaned
-    text is empty.  No hard page limit.
+    text is empty.  No hard page limit.  Uses ``strict=False`` so mildly
+    malformed PDFs (common with web uploads) are tolerated.
     """
-    reader = PdfReader(BytesIO(pdf_bytes))
+    try:
+        reader = PdfReader(BytesIO(pdf_bytes), strict=False)
+    except Exception as exc:
+        raise ValueError(f"Failed to parse PDF: {exc}") from exc
 
     pages: list[dict] = []
     for page_number, page in enumerate(reader.pages, start=1):
