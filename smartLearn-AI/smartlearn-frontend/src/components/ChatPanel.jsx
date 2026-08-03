@@ -94,6 +94,14 @@ export default function ChatPanel({ chatId, enabled, onBusy, disabled, onJumpToP
         setLoading(false);
       },
       onError: (msg) => {
+        // Finalize any partial streaming message before showing the error
+        setMessages((prev) => {
+          const last = prev[prev.length - 1];
+          if (last && last.role === 'assistant' && last.streaming) {
+            return [...prev.slice(0, -1), { ...last, streaming: false }];
+          }
+          return prev;
+        });
         setError(msg);
         setLoading(false);
       },

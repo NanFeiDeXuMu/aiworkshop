@@ -1238,7 +1238,7 @@ def answer_document(
     question: str,
     top_k: int = 3,
     candidate_pool: int = 60,
-    answer_model: str = "poolside/laguna-s-2.1:free",
+    answer_model: str = "deepseek-v4-flash",
 ) -> dict:
     """Answer a *question* using the prepared *document*'s FAISS index.
 
@@ -1293,7 +1293,7 @@ def answer_document(
 
             client = OpenAI(
                 api_key=api_key,
-                base_url="https://openrouter.ai/api/v1",
+                base_url="https://api.deepseek.com",
             )
             response = client.chat.completions.create(
                 model=os.getenv("OPENROUTER_MODEL", answer_model),
@@ -1310,8 +1310,9 @@ def answer_document(
                 "citations": citations,
                 "sources": sources,
             }
-        except Exception:
-            pass  # fall through to local extraction
+        except Exception as exc:
+            import sys
+            print(f"[answer_document] LLM call failed, falling back to local: {exc}", file=sys.stderr)
 
     # --- local fallback ---
     local_answer = best_sentence_answer(question, hits)
@@ -1328,7 +1329,7 @@ def stream_answer_document(
     question: str,
     top_k: int = 3,
     candidate_pool: int = 60,
-    answer_model: str = "poolside/laguna-s-2.1:free",
+    answer_model: str = "deepseek-v4-flash",
 ):
     """Generator that streams answer events for SSE.
 
@@ -1375,7 +1376,7 @@ def stream_answer_document(
 
         client = OpenAI(
             api_key=api_key,
-            base_url="https://openrouter.ai/api/v1",
+            base_url="https://api.deepseek.com",
         )
         stream = client.chat.completions.create(
             model=os.getenv("OPENROUTER_MODEL", answer_model),
@@ -1398,10 +1399,10 @@ def stream_answer_document(
         sources = build_sources(hits)
         yield {"type": "done", "citations": citations, "sources": sources}
 
-    except Exception:
-        local_answer = best_sentence_answer(question, hits)
-        yield {"type": "chunk", "content": local_answer}
-        yield {"type": "done", "citations": extract_citations(local_answer, hits), "sources": build_sources(hits)}
+    except Exception as exc:
+        import sys
+        print(f"[stream_answer_document] LLM call failed: {exc}", file=sys.stderr)
+        yield {"type": "error", "detail": f"LLM 调用失败: {exc}"}
 
 
 def append_history(
@@ -1438,7 +1439,7 @@ def answer_document_turn(
     question: str,
     top_k: int = 3,
     candidate_pool: int = 60,
-    answer_model: str = "poolside/laguna-s-2.1:free",
+    answer_model: str = "deepseek-v4-flash",
 ) -> dict:
     """Answer a *question* **and** persist the turn in the document's history.
 
@@ -1463,7 +1464,7 @@ def answer_chat_turn(
     message: str,
     top_k: int = 3,
     candidate_pool: int = 60,
-    answer_model: str = "poolside/laguna-s-2.1:free",
+    answer_model: str = "deepseek-v4-flash",
 ) -> dict:
     """Route-facing alias for :func:`answer_document_turn`.
 

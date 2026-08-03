@@ -292,7 +292,10 @@ async def ask_question_stream(chat_id: str = Query(...), question: str = Query(.
                         "citations": citations,
                         "sources": sources,
                     })
-                    yield f"data: {json.dumps({'type': 'done', 'citations': citations})}\n\n"
+                    yield f"data: {json.dumps({'type': 'done', 'citations': citations, 'sources': sources})}\n\n"
+                elif event["type"] == "error":
+                    yield f"data: {json.dumps({'type': 'error', 'detail': event.get('detail', 'Unknown error')})}\n\n"
+                    return
         except Exception as e:
             yield f"data: {json.dumps({'type': 'error', 'detail': str(e)})}\n\n"
 
