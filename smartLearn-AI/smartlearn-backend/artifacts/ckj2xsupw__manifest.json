@@ -1,0 +1,16 @@
+{
+  "document_id": "ckj2xsupw",
+  "pdf_name": "BTM415_hw1.pdf",
+  "num_pages": 1,
+  "chunk_mode": "character_overlap",
+  "chunk_size": 700,
+  "overlap": 120,
+  "model_name": "sentence-transformers/all-MiniLM-L6-v2",
+  "num_chunks": 5,
+  "embedding_dim": 384,
+  "device": "cpu",
+  "chunk_path": "artifacts\\ckj2xsupw__chunks__character_overlap__s700__o120.json",
+  "embedding_path": "artifacts\\ckj2xsupw__embeddings__character_overlap__s700__o120__sentence-transformers-all-MiniLM-L6-v2.npy",
+  "raw_pages_path": "artifacts\\ckj2xsupw__pages.json",
+  "batch_size": 32
+}

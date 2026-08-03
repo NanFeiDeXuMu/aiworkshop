@@ -1,0 +1,16 @@
+{
+  "document_id": "cx48ovcbu",
+  "pdf_name": "BTM415-introduction (1).pdf",
+  "num_pages": 8,
+  "chunk_mode": "character_overlap",
+  "chunk_size": 700,
+  "overlap": 120,
+  "model_name": "sentence-transformers/all-MiniLM-L6-v2",
+  "num_chunks": 9,
+  "embedding_dim": 384,
+  "device": "cpu",
+  "chunk_path": "artifacts\\cx48ovcbu__chunks__character_overlap__s700__o120.json",
+  "embedding_path": "artifacts\\cx48ovcbu__embeddings__character_overlap__s700__o120__sentence-transformers-all-MiniLM-L6-v2.npy",
+  "raw_pages_path": "artifacts\\cx48ovcbu__pages.json",
+  "batch_size": 32
+}

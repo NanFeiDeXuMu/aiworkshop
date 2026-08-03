@@ -1,0 +1,16 @@
+{
+  "document_id": "cf84xovf7",
+  "pdf_name": "Project3_MIPS_Pipeline.pdf",
+  "num_pages": 6,
+  "chunk_mode": "character_overlap",
+  "chunk_size": 700,
+  "overlap": 120,
+  "model_name": "sentence-transformers/all-MiniLM-L6-v2",
+  "num_chunks": 15,
+  "embedding_dim": 384,
+  "device": "cpu",
+  "chunk_path": "artifacts\\cf84xovf7__chunks__character_overlap__s700__o120.json",
+  "embedding_path": "artifacts\\cf84xovf7__embeddings__character_overlap__s700__o120__sentence-transformers-all-MiniLM-L6-v2.npy",
+  "raw_pages_path": "artifacts\\cf84xovf7__pages.json",
+  "batch_size": 32
+}
